@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.0-beta.2 — npm distribution
+
+- Publish under `@jc_stack/ez-whatsapp`; GitHub remains `jdorado/ez-whatsapp`.
+- Document pinned npm downloads and retain the beta-only distribution channel.
+- Runtime behavior and dependencies are unchanged from beta.1. Live account and
+  reboot acceptance remain deferred.
+
 ## 0.1.0-beta.1 — initial public beta
 
 - Independent Docker WhatsApp linked-device CLI and agent skill.

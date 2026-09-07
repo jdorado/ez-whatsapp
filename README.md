@@ -1,12 +1,14 @@
 # ez-whatsapp
 
-**Beta 0.1.0-beta.1 — for testing on a trusted machine.** Offline and Docker
+**Beta 0.1.0-beta.2 — for testing on a trusted machine.** Offline and Docker
 fixtures are verified. Live account onboarding and reboot acceptance for this
 release are deferred; this is not a production-readiness claim.
 
-Download the exact tarball and SHA256SUMS from
-[GitHub prereleases](https://github.com/jdorado/ez-whatsapp/releases/tag/v0.1.0-beta.1).
-npm publication is separate; do not install the unrelated unscoped ez-whatsapp package.
+The npm package is `@jc_stack/ez-whatsapp` (channel `beta`). Download a pinned
+release with `npm pack @jc_stack/ez-whatsapp@0.1.0-beta.2`, or get the tarball and SHA256SUMS from
+[GitHub prereleases](https://github.com/jdorado/ez-whatsapp/releases/tag/v0.1.0-beta.2).
+GitHub remains under `jdorado`; npm uses `jc_stack`. Do not install the unrelated
+unscoped `ez-whatsapp` package.
 
 
 Installed runtime operation uses Docker Compose. Read
@@ -22,6 +24,21 @@ It uses Baileys (WhatsApp Web linked devices), not Meta's official Cloud API.
 The account must already exist on a phone. This does not create a phone number.
 
 ## Install and link
+
+Fetch the pinned source tarball and extract it into a permanent package directory:
+
+```sh
+npm pack @jc_stack/ez-whatsapp@0.1.0-beta.2
+mkdir -p /absolute/whatsapp-package
+tar -xzf jc_stack-ez-whatsapp-0.1.0-beta.2.tgz -C /absolute/whatsapp-package
+```
+
+Add that extracted source to the owning agent's reviewed local catalog (the
+manager does not fetch npm packages): inspect with
+`ez plugins inspect whatsapp --source /absolute/whatsapp-package/package`, then
+use the returned hash with `ez plugins catalog-add whatsapp --source
+/absolute/whatsapp-package/package --revision sha256:<returned-hash>`.
+Do not replace an existing installed package/profile implicitly.
 
 With the native Ez plugin manager provisioned for this agent, use:
 
