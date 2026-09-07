@@ -37,3 +37,14 @@ under the same registry retains its canonical volume. Never replay uncertain sen
 
 `pnpm verify` and `node docker/smoke.mjs` use synthetic fixtures. Provider identity
 and receipts require separate live checks; accepted is not delivered/read proof.
+
+## Agent-owned upgrades
+
+The beta.3 candidate declares updater protocol 1 and state schema 1. With an
+Ez main package that supports `ez updates`, the agent can upgrade this plugin
+from an exact npm version or a local candidate tarball. Stable is the default
+automatic channel; beta requires owner opt-in. The canonical volumes, linked
+identity and operation receipts survive replacement. No QR re-pairing or send
+replay is part of an upgrade. State/deployment changes require a reviewed migration.
+Follow the main package's `docs/upgrades.md`. This candidate is not published;
+agent-led VM and live-provider upgrade acceptance remain pending.

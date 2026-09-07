@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.0-beta.3 — candidate, not published
+
+- Declare updater protocol and state-schema compatibility for agent-owned upgrades.
+- Document main-registry update policy, retained accounts and migration boundaries.
+- No provider runtime/dependency changes; VM upgrade acceptance is pending.
+
 ## 0.1.0-beta.2 — npm distribution
 
 - Publish under `@jc_stack/ez-whatsapp`; GitHub remains `jdorado/ez-whatsapp`.

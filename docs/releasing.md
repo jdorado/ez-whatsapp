@@ -62,3 +62,14 @@ read back `npm view @jc_stack/ez-whatsapp@0.1.0-beta.2 name version dist-tags --
 (using the release being published), download it with `npm pack`, and verify its
 contents/checksum against the reviewed artifact. Keep the npm artifact and
 GitHub tag on the same reviewed commit. Do not create a new token to bypass 2FA.
+
+## Agent-owned upgrades
+
+The beta.3 candidate declares updater protocol 1 and state schema 1. With an
+Ez main package that supports `ez updates`, the agent can upgrade this plugin
+from an exact npm version or a local candidate tarball. Stable is the default
+automatic channel; beta requires owner opt-in. The canonical volumes, linked
+identity and operation receipts survive replacement. No QR re-pairing or send
+replay is part of an upgrade. State/deployment changes require a reviewed migration.
+Follow the main package's `docs/upgrades.md`. This candidate is not published;
+agent-led VM and live-provider upgrade acceptance remain pending.
