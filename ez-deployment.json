@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "services": {
+    "whatsapp": {
+      "buildTarget": "runtime",
+      "volumes": {"profile":"/state/whatsapp", "ipc":"/plugins/whatsapp", "client":"/client"},
+      "workspace": true,
+      "healthcheck": ["node", "/app/bin/ez-whatsapp.mjs", "doctor", "--socket", "/plugins/whatsapp/service.sock"]
+    }
+  },
+  "commands": {
+    "whatsapp": {"service":"whatsapp", "argv":["node", "/app/bin/ez-whatsapp.mjs"], "suffix":["--socket", "/plugins/whatsapp/service.sock"]}
+  },
+  "exports": {"qr":{"service":"whatsapp", "path":"/plugins/whatsapp/pairing.png"}}
+}

@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "whatsapp",
+  "version": "0.1.0-beta.1",
+  "description": "Link a WhatsApp account, capture incoming messages and send text",
+  "commands": {
+    "whatsapp": {
+      "executable": "bin/ez-whatsapp.mjs",
+      "args": []
+    }
+  },
+  "skills": [
+    "skills/whatsapp/SKILL.md"
+  ]
+}

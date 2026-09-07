@@ -1,0 +1,17 @@
+node_modules/
+*.tgz
+.env*
+!.env.example
+.state/
+coverage/
+.DS_Store
+
+# Deployment bindings and credentials belong outside the checkout.
+docker.env
+relay.env
+
+# Local release artifacts and operator state
+*.tgz
+.private/
+.npmrc
+*.log

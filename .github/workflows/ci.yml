@@ -1,0 +1,38 @@
+name: verify
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        node: [22, 24]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm install --global pnpm@10.30.3
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: pnpm verify
+      - run: npm pack --ignore-scripts --dry-run
+      - run: npm run release:check
+      - run: git diff --check
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build the exact npm package in isolation
+        run: |
+          release_dir="$(mktemp -d)"
+          npm pack --ignore-scripts --pack-destination "$release_dir"
+          tar -xzf "$release_dir"/*.tgz -C "$release_dir"
+          docker build --target test -t ez-whatsapp-tests "$release_dir/package"
+          docker build --target runtime -t ez-whatsapp:local "$release_dir/package"
+      - run: node docker/smoke.mjs
