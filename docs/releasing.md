@@ -31,7 +31,7 @@ No automatic dependency updates, release bot or credentials in pull-request CI.
 6. Confirm repository owner/URLs, package-name availability and publisher access;
    fill package.json repository, homepage and bugs with the actual public URLs.
    Enable GitHub private vulnerability reporting; verify the route. Protect main
-   with CI and PR review (a sole maintainer may self-review explicitly).
+   with CI and independent PR review. Maintainers use the same process.
 7. Obtain maintainer release approval for the exact commit, tarball SHA-256,
    license/third-party obligations and known limits. Only then push the approved
    public tree, tag `v<version>`, and publish that tarball:
@@ -58,18 +58,18 @@ automated gates; deferred live checks remain required for stable release.
 GitHub repositories use `jdorado`; npm packages use `jc_stack`. Verify
 `npm whoami --registry https://registry.npmjs.org/` returns `jc_stack` before
 publishing. Never infer npm scope ownership from a GitHub login. After publishing,
-read back `npm view @jc_stack/ez-whatsapp@0.1.0-beta.2 name version dist-tags --json`
+read back `npm view @jc_stack/ez-whatsapp@0.1.0-beta.12 name version dist-tags --json`
 (using the release being published), download it with `npm pack`, and verify its
 contents/checksum against the reviewed artifact. Keep the npm artifact and
 GitHub tag on the same reviewed commit. Do not create a new token to bypass 2FA.
 
 ## Agent-owned upgrades
 
-The beta.3 candidate declares updater protocol 1 and state schema 1. With an
+This beta declares updater protocol 1 and state schema 1. With an
 Ez main package that supports `ez updates`, the agent can upgrade this plugin
 from an exact npm version or a local candidate tarball. Stable is the default
 automatic channel; beta requires owner opt-in. The canonical volumes, linked
 identity and operation receipts survive replacement. No QR re-pairing or send
 replay is part of an upgrade. State/deployment changes require a reviewed migration.
-Follow the main package's `docs/upgrades.md`. This candidate is not published;
-agent-led VM and live-provider upgrade acceptance remain pending.
+Follow the main package's `docs/upgrades.md`. Agent-led VM and live-provider
+plugin upgrade acceptance remain pending for this beta.

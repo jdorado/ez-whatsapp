@@ -1,12 +1,12 @@
 # ez-whatsapp
 
-**Beta 0.1.0-beta.2 — for testing on a trusted machine.** Offline and Docker
+**Beta 0.1.0-beta.12 — for testing on a trusted machine.** Offline and Docker
 fixtures are verified. Live account onboarding and reboot acceptance for this
 release are deferred; this is not a production-readiness claim.
 
 The npm package is `@jc_stack/ez-whatsapp` (channel `beta`). Download a pinned
-release with `npm pack @jc_stack/ez-whatsapp@0.1.0-beta.2`, or get the tarball and SHA256SUMS from
-[GitHub prereleases](https://github.com/jdorado/ez-whatsapp/releases/tag/v0.1.0-beta.2).
+release with `npm pack @jc_stack/ez-whatsapp@0.1.0-beta.12`, or get the tarball and SHA256SUMS from
+[GitHub prereleases](https://github.com/jdorado/ez-whatsapp/releases/tag/v0.1.0-beta.12).
 GitHub remains under `jdorado`; npm uses `jc_stack`. Do not install the unrelated
 unscoped `ez-whatsapp` package.
 
@@ -37,9 +37,9 @@ workflow.
 Fetch the pinned source tarball and extract it into a permanent package directory:
 
 ```sh
-npm pack @jc_stack/ez-whatsapp@0.1.0-beta.2
+npm pack @jc_stack/ez-whatsapp@0.1.0-beta.12
 mkdir -p /absolute/whatsapp-package
-tar -xzf jc_stack-ez-whatsapp-0.1.0-beta.2.tgz -C /absolute/whatsapp-package
+tar -xzf jc_stack-ez-whatsapp-0.1.0-beta.12.tgz -C /absolute/whatsapp-package
 ```
 
 Add that extracted source to the owning agent's reviewed local catalog (the
@@ -193,11 +193,11 @@ see [third-party distribution obligations](THIRD_PARTY_NOTICES.md).
 
 ## Agent-owned upgrades
 
-The beta.3 candidate declares updater protocol 1 and state schema 1. With an
+This beta declares updater protocol 1 and state schema 1. With an
 Ez main package that supports `ez updates`, the agent can upgrade this plugin
 from an exact npm version or a local candidate tarball. Stable is the default
 automatic channel; beta requires owner opt-in. The canonical volumes, linked
 identity and operation receipts survive replacement. No QR re-pairing or send
 replay is part of an upgrade. State/deployment changes require a reviewed migration.
-Follow the main package's `docs/upgrades.md`. This candidate is not published;
-agent-led VM and live-provider upgrade acceptance remain pending.
+Follow the main package's `docs/upgrades.md`. Agent-led VM and live-provider
+plugin upgrade acceptance remain pending for this beta.

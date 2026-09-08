@@ -1,17 +1,17 @@
 # Changelog
 
-## Unreleased
+## 0.1.0-beta.12 — self-upgrade beta
 
-- Require the verified main Telegram handoff before Ez plugin onboarding; the
-  installed agent prepares the catalog and delivers QR there, not the host installer.
+- Declare updater protocol 1 and state-schema compatibility for main-managed upgrades.
+- Require verified main Telegram onboarding before plugin installation and QR linking.
+- Document retained accounts, migration boundaries and isolated contributor worktrees.
+- Provider implementation/dependencies are unchanged. Automated and synthetic Docker
+  checks cover the plugin; live account/VM upgrade acceptance remains pending.
 
-## 0.1.0-beta.3 — candidate, not published
+Private QA versions beta.3 through beta.11 were not public releases; some were
+deliberately broken rollback fixtures and must never be published.
 
-- Declare updater protocol and state-schema compatibility for agent-owned upgrades.
-- Document main-registry update policy, retained accounts and migration boundaries.
-- No provider runtime/dependency changes; VM upgrade acceptance is pending.
-
-## 0.1.0-beta.2 — npm distribution
+## 0.1.0-beta.2 — distribution preparation (not published)
 
 - Publish under `@jc_stack/ez-whatsapp`; GitHub remains `jdorado/ez-whatsapp`.
 - Document pinned npm downloads and retain the beta-only distribution channel.

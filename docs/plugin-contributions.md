@@ -30,11 +30,11 @@ inert. Installation is complete only after account onboarding and verified use.
 
 ## Agent-owned upgrades
 
-The beta.3 candidate declares updater protocol 1 and state schema 1. With an
+This beta declares updater protocol 1 and state schema 1. With an
 Ez main package that supports `ez updates`, the agent can upgrade this plugin
 from an exact npm version or a local candidate tarball. Stable is the default
 automatic channel; beta requires owner opt-in. The canonical volumes, linked
 identity and operation receipts survive replacement. No QR re-pairing or send
 replay is part of an upgrade. State/deployment changes require a reviewed migration.
-Follow the main package's `docs/upgrades.md`. This candidate is not published;
-agent-led VM and live-provider upgrade acceptance remain pending.
+Follow the main package's `docs/upgrades.md`. Agent-led VM and live-provider
+plugin upgrade acceptance remain pending for this beta.
