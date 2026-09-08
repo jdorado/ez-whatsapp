@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Require the verified main Telegram handoff before Ez plugin onboarding; the
+  installed agent prepares the catalog and delivers QR there, not the host installer.
+
 ## 0.1.0-beta.3 — candidate, not published
 
 - Declare updater protocol and state-schema compatibility for agent-owned upgrades.

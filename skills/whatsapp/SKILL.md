@@ -12,6 +12,16 @@ profile from another agent or infer installation from an available catalog item.
 
 ## Onboarding
 
+For Ez, begin only after the main agent has paired its owner and produced a
+verified Telegram reply. Handle the owner's plugin request in that Telegram
+conversation. A plugin tarball alongside the main package is deferred input,
+not a reason for the original installer CLI to perform this onboarding. Inspect
+the supplied archive/checksum, extract into this agent's writable tools directory,
+and use `ez plugins inspect whatsapp --source <path>` followed by `catalog-add`
+with the returned revision; the owner does not construct catalogs. Deliver QR
+and progress through the same Telegram conversation. If that execution boundary
+fails, diagnose it rather than completing setup through the original host CLI.
+
 “Install WhatsApp” includes starting the plugin and completing linking through
 verified access. Handle the technical work within that request; the owner's QR
 scan is the external step. Deliver the actual private QR image with the action

@@ -25,6 +25,15 @@ The account must already exist on a phone. This does not create a phone number.
 
 ## Install and link
 
+For an Ez installation, complete the main agent first: owner pairing and an
+actual agent reply in Telegram must work before preparing this plugin. A supplied
+WhatsApp tarball does not authorize the original host CLI to install it during
+main setup. Continue with an owner request in the working Telegram conversation;
+the installed agent performs the steps below and delivers its QR there. Infer
+the supplied source path from that request rather than asking the owner to build
+a catalog or run commands. Standalone plugin development is a separate explicit
+workflow.
+
 Fetch the pinned source tarball and extract it into a permanent package directory:
 
 ```sh
