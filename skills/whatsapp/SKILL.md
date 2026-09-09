@@ -69,3 +69,50 @@ not replay history or include own messages. Monitoring does not authorize replie
 The relay event binding must use the registered deployment's socket export and
 preserve its cursor. Source registration and plugin installation are separate
 roles, not separate provider instances. Keep manual during setup unless requested.
+
+### Choosing wake-up scope
+
+There are three general capture-attention modes: manual (explicit reads only),
+selected (named contacts), and all (all eligible contacts). “Monitor and answer
+from this number” means selected attention plus reply authority. Do not ask the
+owner to name a mode. “Reply if they message” does not authorize an opening send.
+
+General policy and task watches are separate: an approved core task uses
+`task-watch` for expiring selected attention while general policy can remain
+manual. Neither an ordinary subscription nor a saved instruction permits reply
+execution. The core owns that grant; this plugin cannot approve it.
+
+On a requested reply mandate, read the current installed
+`ezenciel-agents-task --help`, complete the relay socket/source connection, and
+propose the contact-scoped task for the required core confirmation. Outbound
+jobs such as bookings use `propose` without `--incoming-only` to initiate the
+inquiry and follow up. Use `--incoming-only` only when asked to wait for their
+message and then answer.
+Do not stop after saying the connection is missing. Complete technical setup
+within the existing request; ask only for a genuinely missing identity, QR scan
+or required confirmation. Do not re-pair an existing connection.
+
+Report active only after source readback, core approval and matching task watch.
+Explain v1 expiry instead of promising indefinite replies. Unmatched contacts
+must not wake an owner-authority session. Never substitute all mode, a scheduled
+unrestricted inbox poll, or manual CLI sends to bypass the core task boundary.
+
+### Plain-language intent
+
+Keep technical modes out of the owner's conversation. Linking WhatsApp defaults
+to quiet capture. Once verified, say briefly “WhatsApp is connected. Want me to
+follow up with anyone?” Skip that optional question when a job is already given.
+
+“Find availability” or “book a restaurant” implicitly includes watching that
+correspondent, handling replies across turns and reporting the result. Twelve
+inquiries mean twelve scoped contacts, not the whole inbox. Do not treat a sent
+message as completion or ask whether obvious follow-up is wanted.
+
+“Just send; I will reply” authorizes one send with no new watch. “Answer if this
+person messages” means an incoming-only task with no opener. “Keep the messages
+for me” means quiet capture. Only when intent is unclear ask one short question:
+“Should I reply for you, or just keep the messages for you to review?”
+
+The core may still require confirmation of the concrete scope; avoid a separate
+mode-selection questionnaire. Keep expiry and disclosure limits in that proposal.
+Do not promise blanket or indefinite automatic replies beyond the core grant.
