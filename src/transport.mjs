@@ -49,7 +49,6 @@ export async function createTransport(store, lib = baileys) {
     socket = lib.default({
       auth: auth.state, logger, qrTimeout: 60000, markOnlineOnConnect: false, syncFullHistory: false,
       shouldSyncHistoryMessage: () => false, emitOwnEvents: false,
-      browser: lib.Browsers.macOS('ez-whatsapp'),
       getMessage: async key => key.id ? await readJSON(store.path(`outgoing/${hash(key.id)}.json`), undefined) : undefined
     });
     const current = socket;

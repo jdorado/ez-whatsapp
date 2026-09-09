@@ -201,3 +201,11 @@ identity and operation receipts survive replacement. No QR re-pairing or send
 replay is part of an upgrade. State/deployment changes require a reviewed migration.
 Follow the main package's `docs/upgrades.md`. Agent-led VM and live-provider
 plugin upgrade acceptance remain pending for this beta.
+
+### Linking compatibility
+
+The transport uses Baileys’ default browser identity. The browser name is part
+of the pairing protocol and QR payload, so it must not be replaced with the
+plugin’s display name. After upgrading a failed, unlinked installation, export
+a fresh QR from its registered deployment. Confirm `ez whatsapp doctor` reports
+`connected: true`; QR generation alone does not confirm linking.
