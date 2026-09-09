@@ -202,3 +202,28 @@ test('task-watch enables only bounded contact attention without changing general
   assert.equal(f.service.policy.eligible(row, await f.service.policy.get(), watches), false);
   await assert.rejects(f.service.call('task-watch', { accountId, conversationId, expiresAt: Date.now() + 100 * 3600000 }), { code: 'INVALID_INPUT' });
 });
+
+test('provider alternate phone identity wakes only the watched individual and survives event recheck', async t => {
+  const f = await fixture(t), phone = '15551234567@s.whatsapp.net', lid = '123456789@lid';
+  await f.service.call('task-watch', { accountId: '15551230000@s.whatsapp.net', conversationId: phone, expiresAt: Date.now() + 3600000 });
+  const base = normalize({ key: { id: 'match', remoteJid: lid, remoteJidAlt: phone }, messageTimestamp: Date.now() / 1000, message: { conversation: 'Hello' } }, x => x, 'notify');
+  await f.store.ingest(base);
+  for (const [i, changes] of [
+    { phoneJid: '15559999999@s.whatsapp.net' }, { phoneJid: null, text: phone },
+    { chat: '12345@g.us', participant: phone }, { fromMe: true },
+    { timestamp: 1 }, { source: 'history' }, { phoneJid: 'fake@s.whatsapp.net' },
+    { chat: '15559999999@s.whatsapp.net' }
+  ].entries()) await f.store.ingest({ ...base, ...changes, id: `excluded-${i}` });
+  const batch = await f.service.call('events', { after: 0 });
+  assert.equal(batch.cursor, 9); assert.equal(batch.events.length, 1);
+  assert.equal(batch.events[0].conversationId, phone);
+  assert.deepEqual((await f.service.call('events-check', { ids: ['1','2','3','4','5','6','7','8','9'] })).events, batch.events);
+  assert.equal((await f.store.messages(0, 1)).messages[0].chat, lid);
+  const policy = { mode: 'manual', chats: {} }, floor = { seq: 0, at: Date.now(), expiresAt: Date.now() + 3600000 };
+  const row = { ...base, seq: 1 };
+  assert.equal(f.service.policy.target(row, policy, { [lid]: floor }), lid);
+  assert.equal(f.service.policy.target(row, policy, { [lid]: floor, [phone]: floor }), phone);
+  assert.equal(f.service.policy.target(row, policy, { [phone]: { ...floor, expiresAt: 1 } }), undefined);
+  assert.equal(f.service.policy.target(row, { mode: 'selected', chats: { [phone]: floor } }), phone);
+  assert.equal(f.service.policy.target(row, { mode: 'all', since: floor }), phone);
+});

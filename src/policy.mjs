@@ -47,14 +47,21 @@ export class Policy {
       return { watching: chat, expiresAt };
     });
   }
-  eligible(row, policy, watches = {}) {
-    const watch = watches[row.chat];
-    const floor = watch?.expiresAt > Date.now() ? watch : policy.mode === 'all' ? policy.since : policy.mode === 'selected' ? policy.chats[row.chat] : null;
-    return Boolean(floor && !row.fromMe && ['notify', 'append'].includes(row.source) &&
-      row.seq > floor.seq && Number.isFinite(row.timestamp) && row.timestamp * 1000 >= floor.at - 1000);
+  target(row, policy, watches = {}) {
+    // Only provider-supplied alternate identity on an individual LID may match
+    // a phone watch. Never infer identity from message text or group members.
+    const chats = /^\d+@lid$/.test(row.chat) && /^\d{7,15}@s\.whatsapp\.net$/.test(row.phoneJid)
+      ? [row.phoneJid, row.chat] : [row.chat];
+    return chats.find(chat => {
+      const watch = watches[chat];
+      const floor = watch?.expiresAt > Date.now() ? watch : policy.mode === 'all' ? policy.since : policy.mode === 'selected' ? policy.chats[chat] : null;
+      return floor && !row.fromMe && ['notify', 'append'].includes(row.source) &&
+        row.seq > floor.seq && Number.isFinite(row.timestamp) && row.timestamp * 1000 >= floor.at - 1000;
+    });
   }
-  event(row) {
-    return { id: String(row.seq), conversationId: row.chat, receivedAt: Date.parse(row.capturedAt),
+  eligible(row, policy, watches = {}) { return Boolean(this.target(row, policy, watches)); }
+  event(row, conversationId = row.chat) {
+    return { id: String(row.seq), conversationId, receivedAt: Date.parse(row.capturedAt),
       text: JSON.stringify({ messageId: row.id, participant: row.participant, type: row.type, text: row.text?.slice(0, 10000) ?? null, mediaAvailable: row.mediaAvailable ?? false }) };
   }
   async events(after = 0) {
@@ -67,7 +74,8 @@ export class Policy {
       let cursor = after;
       for (const row of page.messages) {
         cursor = row.seq;
-        if (this.eligible(row, policy, watches)) events.push(this.event(row));
+        const target = this.target(row, policy, watches);
+        if (target) events.push(this.event(row, target));
         if (events.length === 10) break;
       }
       return { cursor, events };
@@ -82,7 +90,8 @@ export class Policy {
       for (const id of ids) {
         const page = await this.store.messages(Number(id) - 1, 1);
         const row = page.messages[0];
-        if (row?.seq === Number(id) && this.eligible(row, policy, watches)) events.push(this.event(row));
+        const target = row?.seq === Number(id) && this.target(row, policy, watches);
+        if (target) events.push(this.event(row, target));
       }
       return { events };
     });
