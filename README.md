@@ -229,4 +229,5 @@ phone number only when that incoming message carries the provider's alternate
 phone identity. Events and their rechecks use the same matched identity; capture
 records retain the original ID. Groups, message text and display names cannot
 supply this mapping. An explicit internal-ID watch still works; if both identities
-are watched, the phone match takes precedence and emits one event.
+are watched, the phone match takes precedence and emits one event. Explicit task
+watches take precedence over broad inbox attention.

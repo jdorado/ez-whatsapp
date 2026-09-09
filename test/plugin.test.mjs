@@ -226,4 +226,5 @@ test('provider alternate phone identity wakes only the watched individual and su
   assert.equal(f.service.policy.target(row, policy, { [phone]: { ...floor, expiresAt: 1 } }), undefined);
   assert.equal(f.service.policy.target(row, { mode: 'selected', chats: { [phone]: floor } }), phone);
   assert.equal(f.service.policy.target(row, { mode: 'all', since: floor }), phone);
+  assert.equal(f.service.policy.target(row, { mode: 'all', since: floor }, { [lid]: floor }), lid);
 });

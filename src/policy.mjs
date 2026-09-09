@@ -52,12 +52,13 @@ export class Policy {
     // a phone watch. Never infer identity from message text or group members.
     const chats = /^\d+@lid$/.test(row.chat) && /^\d{7,15}@s\.whatsapp\.net$/.test(row.phoneJid)
       ? [row.phoneJid, row.chat] : [row.chat];
-    return chats.find(chat => {
-      const watch = watches[chat];
-      const floor = watch?.expiresAt > Date.now() ? watch : policy.mode === 'all' ? policy.since : policy.mode === 'selected' ? policy.chats[chat] : null;
-      return floor && !row.fromMe && ['notify', 'append'].includes(row.source) &&
-        row.seq > floor.seq && Number.isFinite(row.timestamp) && row.timestamp * 1000 >= floor.at - 1000;
-    });
+    const eligible = floor => floor && !row.fromMe && ['notify', 'append'].includes(row.source) &&
+      row.seq > floor.seq && Number.isFinite(row.timestamp) && row.timestamp * 1000 >= floor.at - 1000;
+    // Explicit task attention wins over broad inbox attention, so an all-mode
+    // fallback cannot rename an event away from its approved task contact.
+    return chats.find(chat => watches[chat]?.expiresAt > Date.now() && eligible(watches[chat])) ??
+      chats.find(chat => policy.mode === 'selected' && eligible(policy.chats[chat])) ??
+      (policy.mode === 'all' && eligible(policy.since) ? chats[0] : undefined);
   }
   eligible(row, policy, watches = {}) { return Boolean(this.target(row, policy, watches)); }
   event(row, conversationId = row.chat) {
