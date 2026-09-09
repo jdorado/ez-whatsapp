@@ -69,3 +69,27 @@ not replay history or include own messages. Monitoring does not authorize replie
 The relay event binding must use the registered deployment's socket export and
 preserve its cursor. Source registration and plugin installation are separate
 roles, not separate provider instances. Keep manual during setup unless requested.
+
+### Choosing wake-up scope
+
+There are three general capture-attention modes: manual (explicit reads only),
+selected (named contacts), and all (all eligible contacts). “Monitor and answer
+from this number” means selected attention plus reply authority. Do not ask the
+owner to name a mode. “Reply if they message” does not authorize an opening send.
+
+General policy and task watches are separate: an approved core task uses
+`task-watch` for expiring selected attention while general policy can remain
+manual. Neither an ordinary subscription nor a saved instruction permits reply
+execution. The core owns that grant; this plugin cannot approve it.
+
+On a requested reply mandate, read the current installed
+`ezenciel-agents-task --help`, complete the relay socket/source connection, and
+propose an incoming-only contact-scoped task for the required core confirmation.
+Do not stop after saying the connection is missing. Complete technical setup
+within the existing request; ask only for a genuinely missing identity, QR scan
+or required confirmation. Do not re-pair an existing connection.
+
+Report active only after source readback, core approval and matching task watch.
+Explain v1 expiry instead of promising indefinite replies. Unmatched contacts
+must not wake an owner-authority session. Never substitute all mode, a scheduled
+unrestricted inbox poll, or manual CLI sends to bypass the core task boundary.
