@@ -136,6 +136,12 @@ test('provider events create private QR, pin identity, capture messages and reje
   await until(() => transport.status().qrPath);
   assert.equal((await stat(transport.status().qrPath)).mode & 0o777, 0o600);
   assert.equal(config.markOnlineOnConnect, false);
+  // The browser name is protocol data: custom branding becomes OTHER_WEB_CLIENT
+  // in the QR, unlike the supported default used by a plain Baileys socket.
+  const browser = { ...lib.DEFAULT_CONNECTION_CONFIG, ...config }.browser;
+  assert.equal(lib.getCompanionPlatformId(browser), '1');
+  assert.equal(lib.buildPairingQRData('ref', 'noise', 'identity', 'adv', browser),
+    'https://wa.me/settings/linked_devices#ref,noise,identity,adv,1');
   socket.ev.emit('connection.update', { connection: 'open' });
   await until(() => transport.status().connected);
   assert.equal(transport.status().account.jid, '15551230000@s.whatsapp.net');

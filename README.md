@@ -216,3 +216,10 @@ revocation. This adapter owns provider identity, capture and send receipts; it
 cannot grant authority. Use a task-aware main version for autonomous replies.
 Older cores continue to use existing manual commands/events. No live messaging
 is exercised by routine tests.
+### Linking compatibility
+
+The transport uses Baileys’ default browser identity. The browser name is part
+of the pairing protocol and QR payload, so it must not be replaced with the
+plugin’s display name. After upgrading a failed, unlinked installation, export
+a fresh QR from its registered deployment. Confirm `ez whatsapp doctor` reports
+`connected: true`; QR generation alone does not confirm linking.
