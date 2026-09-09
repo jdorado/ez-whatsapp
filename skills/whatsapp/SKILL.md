@@ -84,7 +84,10 @@ execution. The core owns that grant; this plugin cannot approve it.
 
 On a requested reply mandate, read the current installed
 `ezenciel-agents-task --help`, complete the relay socket/source connection, and
-propose an incoming-only contact-scoped task for the required core confirmation.
+propose the contact-scoped task for the required core confirmation. Outbound
+jobs such as bookings use `propose` without `--incoming-only` to initiate the
+inquiry and follow up. Use `--incoming-only` only when asked to wait for their
+message and then answer.
 Do not stop after saying the connection is missing. Complete technical setup
 within the existing request; ask only for a genuinely missing identity, QR scan
 or required confirmation. Do not re-pair an existing connection.
