@@ -93,3 +93,23 @@ Report active only after source readback, core approval and matching task watch.
 Explain v1 expiry instead of promising indefinite replies. Unmatched contacts
 must not wake an owner-authority session. Never substitute all mode, a scheduled
 unrestricted inbox poll, or manual CLI sends to bypass the core task boundary.
+
+### Plain-language intent
+
+Keep technical modes out of the owner's conversation. Linking WhatsApp defaults
+to quiet capture. Once verified, say briefly “WhatsApp is connected. Want me to
+follow up with anyone?” Skip that optional question when a job is already given.
+
+“Find availability” or “book a restaurant” implicitly includes watching that
+correspondent, handling replies across turns and reporting the result. Twelve
+inquiries mean twelve scoped contacts, not the whole inbox. Do not treat a sent
+message as completion or ask whether obvious follow-up is wanted.
+
+“Just send; I will reply” authorizes one send with no new watch. “Answer if this
+person messages” means an incoming-only task with no opener. “Keep the messages
+for me” means quiet capture. Only when intent is unclear ask one short question:
+“Should I reply for you, or just keep the messages for you to review?”
+
+The core may still require confirmation of the concrete scope; avoid a separate
+mode-selection questionnaire. Keep expiry and disclosure limits in that proposal.
+Do not promise blanket or indefinite automatic replies beyond the core grant.
