@@ -37,8 +37,19 @@ export class Policy {
       return value;
     });
   }
-  eligible(row, policy) {
-    const floor = policy.mode === 'all' ? policy.since : policy.mode === 'selected' ? policy.chats[row.chat] : null;
+  async watch(chat, expiresAt) {
+    if (!Number.isFinite(expiresAt) || expiresAt <= Date.now() || expiresAt > Date.now() + 72 * 3600000) throw fail('INVALID_INPUT', 'Invalid task expiry');
+    return this.store.serial(async () => {
+      const watches = await readJSON(this.store.path('task-watches.json'), {});
+      for (const [id, floor] of Object.entries(watches)) if (floor.expiresAt <= Date.now()) delete watches[id];
+      if (!watches[chat] || watches[chat].expiresAt !== expiresAt) watches[chat] = { seq: await this.head(), at: Date.now(), expiresAt };
+      await writeJSON(this.store.path('task-watches.json'), watches);
+      return { watching: chat, expiresAt };
+    });
+  }
+  eligible(row, policy, watches = {}) {
+    const watch = watches[row.chat];
+    const floor = watch?.expiresAt > Date.now() ? watch : policy.mode === 'all' ? policy.since : policy.mode === 'selected' ? policy.chats[row.chat] : null;
     return Boolean(floor && !row.fromMe && ['notify', 'append'].includes(row.source) &&
       row.seq > floor.seq && Number.isFinite(row.timestamp) && row.timestamp * 1000 >= floor.at - 1000);
   }
@@ -50,12 +61,13 @@ export class Policy {
     if (!Number.isSafeInteger(after) || after < 0) throw fail('INVALID_INPUT', 'Invalid event cursor');
     return this.store.serial(async () => {
       const policy = await this.get();
+      const watches = await readJSON(this.store.path('task-watches.json'), {});
       const page = await this.store.messages(after, 100);
       const events = [];
       let cursor = after;
       for (const row of page.messages) {
         cursor = row.seq;
-        if (this.eligible(row, policy)) events.push(this.event(row));
+        if (this.eligible(row, policy, watches)) events.push(this.event(row));
         if (events.length === 10) break;
       }
       return { cursor, events };
@@ -65,11 +77,12 @@ export class Policy {
     if (!Array.isArray(ids) || ids.length > 10 || ids.some(id => typeof id !== 'string' || !/^[1-9]\d{0,15}$/.test(id) || !Number.isSafeInteger(Number(id)))) throw fail('INVALID_INPUT', 'Supply up to 10 event IDs');
     return this.store.serial(async () => {
       const policy = await this.get();
+      const watches = await readJSON(this.store.path('task-watches.json'), {});
       const events = [];
       for (const id of ids) {
         const page = await this.store.messages(Number(id) - 1, 1);
         const row = page.messages[0];
-        if (row?.seq === Number(id) && this.eligible(row, policy)) events.push(this.event(row));
+        if (row?.seq === Number(id) && this.eligible(row, policy, watches)) events.push(this.event(row));
       }
       return { events };
     });

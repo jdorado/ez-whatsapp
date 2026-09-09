@@ -6,7 +6,13 @@
   "commands": {
     "whatsapp": {
       "executable": "bin/ez-whatsapp.mjs",
-      "args": []
+      "args": [],
+      "exposure": {
+        "receivesExternalContent": true,
+        "sendsExternally": true,
+        "changesRecords": true,
+        "requiresReview": true
+      }
     }
   },
   "skills": [
