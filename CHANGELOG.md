@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Support core message-v1 task capture and sending for individual contacts, with
+  expected-account checks and idempotent bound receipts. Declare command exposure.
+
 ## 0.1.0-beta.12 — self-upgrade beta
 
 - Declare updater protocol 1 and state-schema compatibility for main-managed upgrades.

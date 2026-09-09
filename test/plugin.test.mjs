@@ -169,3 +169,30 @@ test('exported socket supports onboarding and literal CLI arguments without shar
     assert.equal(f.sends(), 0);
   } finally { await running.close(); await rm(ipc, { recursive: true, force: true }); }
 });
+
+test('core message-v1 sends only a canonical individual on the expected account and returns a bound receipt', async t => {
+  const f = await fixture(t);
+  assert.equal((await f.service.call('events-head')).taskProtocol, 'message-v1');
+  const args = { accountId: '15551230000@s.whatsapp.net', conversationId: '15551234567@s.whatsapp.net', text: 'Fixture only', key: 'task_test' };
+  const receipt = await f.service.call('task-send', args);
+  assert.equal(receipt.accountId, args.accountId); assert.equal(receipt.conversationId, args.conversationId); assert.equal(receipt.state, 'accepted');
+  await f.service.call('task-send', args); assert.equal(f.sends(), 1);
+  await assert.rejects(f.service.call('task-send', { ...args, accountId: 'other' }), { code: 'ACCOUNT_MISMATCH' });
+  await assert.rejects(f.service.call('task-send', { ...args, conversationId: '+15551234567' }), { code: 'INVALID_INPUT' });
+  await assert.rejects(f.service.call('task-send', { ...args, conversationId: '12345@g.us' }), { code: 'INVALID_INPUT' });
+  f.transport.verify = async () => { f.transport.status = () => ({ connected: true, account: { jid: 'other' } }); return { exists: true }; };
+  await assert.rejects(f.service.call('task-send', { ...args, key: 'after-relink' }), { code: 'ACCOUNT_MISMATCH' });
+  assert.equal(f.sends(), 1);
+});
+test('task-watch enables only bounded contact attention without changing general inbox policy', async t => {
+  const f = await fixture(t), accountId = '15551230000@s.whatsapp.net', conversationId = '15551234567@s.whatsapp.net';
+  await f.service.call('task-watch', { accountId, conversationId, expiresAt: Date.now() + 3600000 });
+  assert.equal((await f.service.call('policy')).mode, 'manual');
+  const watches = JSON.parse(await readFile(f.store.path('task-watches.json'), 'utf8'));
+  const row = { seq: 1, chat: conversationId, fromMe: false, source: 'notify', timestamp: Date.now() / 1000 };
+  assert.equal(f.service.policy.eligible(row, await f.service.policy.get(), watches), true);
+  assert.equal(f.service.policy.eligible({ ...row, chat: '15559999999@s.whatsapp.net' }, await f.service.policy.get(), watches), false);
+  watches[conversationId].expiresAt = 1;
+  assert.equal(f.service.policy.eligible(row, await f.service.policy.get(), watches), false);
+  await assert.rejects(f.service.call('task-watch', { accountId, conversationId, expiresAt: Date.now() + 100 * 3600000 }), { code: 'INVALID_INPUT' });
+});

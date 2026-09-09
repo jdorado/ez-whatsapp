@@ -201,3 +201,18 @@ identity and operation receipts survive replacement. No QR re-pairing or send
 replay is part of an upgrade. State/deployment changes require a reviewed migration.
 Follow the main package's `docs/upgrades.md`. Agent-led VM and live-provider
 plugin upgrade acceptance remain pending for this beta.
+
+### Core messaging tasks
+
+This candidate implements Ez's generic `message-v1` event-source protocol for
+individual contacts. `task-watch` enables expiring attention for one exact
+contact without changing the general inbox policy. `task-send` checks the
+expected linked account before dispatch and returns a contact/account/key-bound
+acceptance receipt. Account changes, group targets and noncanonical IDs fail
+closed. Accepted is not recipient delivery.
+
+The main core owns owner approval, purpose/context, expiry, message limits and
+revocation. This adapter owns provider identity, capture and send receipts; it
+cannot grant authority. Use a task-aware main version for autonomous replies.
+Older cores continue to use existing manual commands/events. No live messaging
+is exercised by routine tests.

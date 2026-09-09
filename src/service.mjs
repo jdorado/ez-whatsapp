@@ -12,7 +12,21 @@ export class Service {
     if (command === 'doctor') return { ...this.transport.status(), profile: this.store.dir, capabilities: ['send-text', 'read-captured-messages'], eventSource: true, wakePolicy: await this.policy.get(), hostDispatchRequired: true };
     if (command === 'policy') return args.mode === undefined ? this.policy.get() : this.policy.change(command, args);
     if (['subscribe', 'unsubscribe'].includes(command)) return this.policy.change(command, args);
-    if (command === 'events-head') return { cursor: await this.policy.head() };
+    if (command === 'events-head') return { cursor: await this.policy.head(), taskProtocol: 'message-v1', accountId: this.transport.status().account?.jid ?? null };
+    if (command === 'task-watch') {
+      this.checkTaskAccount(args.accountId);
+      const chat = recipient(args.conversationId);
+      if (chat !== args.conversationId || chat.endsWith('@g.us')) throw fail('INVALID_INPUT', 'Task contact must be one canonical individual');
+      return this.policy.watch(chat, args.expiresAt);
+    }
+    if (command === 'task-send') {
+      this.checkTaskAccount(args.accountId);
+      const to = recipient(args.conversationId);
+      if (to !== args.conversationId || to.endsWith('@g.us')) throw fail('INVALID_INPUT', 'Task contact must be one canonical individual');
+      const op = await this.call('send', { to, text: args.text, key: args.key, expectedAccount: args.accountId });
+      if (op.account?.jid !== args.accountId) throw fail('ACCOUNT_MISMATCH', 'Operation belongs to another account');
+      return { accountId: args.accountId, conversationId: op.to, key: op.key, state: ['accepted', 'delivered', 'read'].includes(op.state) ? 'accepted' : 'uncertain', receiptId: op.providerMessageId };
+    }
     if (command === 'events') return this.policy.events(args.after);
     if (command === 'events-check') return this.policy.check(args.ids);
     if (command === 'inbox') {
@@ -33,6 +47,7 @@ export class Service {
     if (typeof args.key !== 'string' || !/^[\w:.-]{1,160}$/.test(args.key)) throw fail('INVALID_INPUT', 'Supply a stable idempotency key (1..160 letters, digits, :, ., _, -)');
     if (args.preview) return { preview: true, to, text: args.text, key: args.key, account: this.transport.status().account };
     return this.store.serial(async () => {
+      if (args.expectedAccount) this.checkTaskAccount(args.expectedAccount);
       const digest = hash(JSON.stringify([to, args.text]));
       const prior = await this.store.operation(args.key);
       if (prior) {
@@ -42,11 +57,13 @@ export class Service {
       }
       if (!this.transport.status().connected) throw fail('UNAVAILABLE', 'WhatsApp is not connected; inspect doctor');
       const verified = await this.transport.verify(to);
+      if (args.expectedAccount) this.checkTaskAccount(args.expectedAccount);
       if (!verified.exists) throw fail('NOT_FOUND', 'Recipient could not be verified');
       const op = { key: args.key, digest, to, account: this.transport.status().account, state: 'pending', providerMessageId: randomBytes(16).toString('hex').toUpperCase(), createdAt: new Date().toISOString() };
       await this.store.saveOperation(op);
       try {
-        const result = await this.transport.send(to, args.text, op.providerMessageId);
+        if (args.expectedAccount) this.checkTaskAccount(args.expectedAccount);
+        const result = await this.transport.send(to, args.text, op.providerMessageId, args.expectedAccount);
         if (result?.id !== op.providerMessageId) throw fail('UNCERTAIN', 'Missing expected provider message ID');
         op.state = 'accepted'; // socket acceptance is not recipient delivery
         op.acceptedAt = new Date().toISOString();
@@ -58,6 +75,11 @@ export class Service {
         throw fail('UNCERTAIN', 'Send outcome uncertain; query operation with the same key. Do not resend.');
       }
     });
+  }
+  checkTaskAccount(accountId) {
+    const status = this.transport.status();
+    if (typeof accountId !== 'string' || !accountId || !status.connected || status.account?.jid !== accountId)
+      throw fail('ACCOUNT_MISMATCH', 'Task account is disconnected or changed');
   }
   async receipt(id, state) {
     const { readdir } = await import('node:fs/promises');
