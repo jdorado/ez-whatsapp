@@ -185,7 +185,7 @@ test('core message-v1 sends only a canonical individual on the expected account 
   await f.service.call('task-send', args); assert.equal(f.sends(), 1);
   await assert.rejects(f.service.call('task-send', { ...args, accountId: 'other' }), { code: 'ACCOUNT_MISMATCH' });
   await assert.rejects(f.service.call('task-send', { ...args, conversationId: '+15551234567' }), { code: 'INVALID_INPUT' });
-  await assert.rejects(f.service.call('task-send', { ...args, conversationId: '12345@g.us' }), { code: 'INVALID_INPUT' });
+  await assert.rejects(f.service.call('task-send', { ...args, conversationId: 'not-a-group' }), { code: 'INVALID_INPUT' });
   f.transport.verify = async () => { f.transport.status = () => ({ connected: true, account: { jid: 'other' } }); return { exists: true }; };
   await assert.rejects(f.service.call('task-send', { ...args, key: 'after-relink' }), { code: 'ACCOUNT_MISMATCH' });
   assert.equal(f.sends(), 1);
@@ -227,4 +227,21 @@ test('provider alternate phone identity wakes only the watched individual and su
   assert.equal(f.service.policy.target(row, { mode: 'selected', chats: { [phone]: floor } }), phone);
   assert.equal(f.service.policy.target(row, { mode: 'all', since: floor }), phone);
   assert.equal(f.service.policy.target(row, { mode: 'all', since: floor }, { [lid]: floor }), lid);
+});
+
+
+test('ongoing exact group watches share provider transport and can be removed', async t => {
+  const f = await fixture(t), accountId = '15551230000@s.whatsapp.net', conversationId = '12345@g.us';
+  assert.equal((await f.service.call('events-head')).persistentWatch, true);
+  await f.service.call('task-watch', {accountId, conversationId, expiresAt:8640000000000000});
+  const watches = JSON.parse(await readFile(f.store.path('task-watches.json'),'utf8'));
+  const row = {seq:1, chat:conversationId, fromMe:false, source:'notify', timestamp:Date.now()/1000};
+  assert.equal(f.service.policy.eligible(row, await f.service.policy.get(), watches),true);
+  assert.equal(f.service.policy.eligible({...row,chat:'54321@g.us'},await f.service.policy.get(),watches),false);
+  await f.service.call('task-send',{accountId,conversationId,text:'Group reply',key:'group-reply'});
+  assert.equal(f.sends(),1);
+  await f.service.call('task-unwatch',{accountId,conversationId});
+  const after = JSON.parse(await readFile(f.store.path('task-watches.json'),'utf8'));
+  assert.equal(f.service.policy.eligible(row,await f.service.policy.get(),after),false);
+  await assert.rejects(f.service.call('task-unwatch',{accountId:'other',conversationId}),{code:'ACCOUNT_MISMATCH'});
 });

@@ -12,17 +12,23 @@ export class Service {
     if (command === 'doctor') return { ...this.transport.status(), profile: this.store.dir, capabilities: ['send-text', 'read-captured-messages'], eventSource: true, wakePolicy: await this.policy.get(), hostDispatchRequired: true };
     if (command === 'policy') return args.mode === undefined ? this.policy.get() : this.policy.change(command, args);
     if (['subscribe', 'unsubscribe'].includes(command)) return this.policy.change(command, args);
-    if (command === 'events-head') return { cursor: await this.policy.head(), taskProtocol: 'message-v1', accountId: this.transport.status().account?.jid ?? null };
+    if (command === 'events-head') return { cursor: await this.policy.head(), taskProtocol: 'message-v1', persistentWatch: true, accountId: this.transport.status().account?.jid ?? null };
+    if (command === 'task-unwatch') {
+      this.checkTaskAccount(args.accountId);
+      const chat = recipient(args.conversationId);
+      if (chat !== args.conversationId) throw fail('INVALID_INPUT', 'Task conversation must be one canonical chat');
+      return this.policy.unwatch(chat);
+    }
     if (command === 'task-watch') {
       this.checkTaskAccount(args.accountId);
       const chat = recipient(args.conversationId);
-      if (chat !== args.conversationId || chat.endsWith('@g.us')) throw fail('INVALID_INPUT', 'Task contact must be one canonical individual');
+      if (chat !== args.conversationId) throw fail('INVALID_INPUT', 'Task conversation must be one canonical chat');
       return this.policy.watch(chat, args.expiresAt);
     }
     if (command === 'task-send') {
       this.checkTaskAccount(args.accountId);
       const to = recipient(args.conversationId);
-      if (to !== args.conversationId || to.endsWith('@g.us')) throw fail('INVALID_INPUT', 'Task contact must be one canonical individual');
+      if (to !== args.conversationId) throw fail('INVALID_INPUT', 'Task conversation must be one canonical chat');
       const op = await this.call('send', { to, text: args.text, key: args.key, expectedAccount: args.accountId });
       if (op.account?.jid !== args.accountId) throw fail('ACCOUNT_MISMATCH', 'Operation belongs to another account');
       return { accountId: args.accountId, conversationId: op.to, key: op.key, state: ['accepted', 'delivered', 'read'].includes(op.state) ? 'accepted' : 'uncertain', receiptId: op.providerMessageId };
