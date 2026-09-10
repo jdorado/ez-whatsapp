@@ -9,6 +9,7 @@ import { Policy } from './policy.mjs';
 export class Service {
   constructor(store, transport) { this.store = store; this.transport = transport; this.policy = new Policy(store); }
   async call(command, args = {}) {
+    if (command === 'repair') return this.transport.repair();
     if (command === 'doctor') return { ...this.transport.status(), profile: this.store.dir, capabilities: ['send-text', 'read-captured-messages'], eventSource: true, wakePolicy: await this.policy.get(), hostDispatchRequired: true };
     if (command === 'policy') return args.mode === undefined ? this.policy.get() : this.policy.change(command, args);
     if (['subscribe', 'unsubscribe'].includes(command)) return this.policy.change(command, args);

@@ -116,3 +116,19 @@ for me” means quiet capture. Only when intent is unclear ask one short questio
 The core may still require confirmation of the concrete scope; avoid a separate
 mode-selection questionnaire. Keep expiry and disclosure limits in that proposal.
 Do not promise blanket or indefinite automatic replies beyond the core grant.
+
+## Repair a revoked session
+
+When the owner requests reconnection and `doctor` reports `needs-attention`
+with `disconnectCode: 401`, run `ez whatsapp repair` through the existing bound
+registry. This explicitly replaces only revoked authentication in the running
+service. It preserves the pinned account identity, messages, cursors, policy,
+watches, operation keys and receipts; core-owned grants are untouched.
+It refuses connected, connecting, replaced, forbidden or other non-401 states.
+Do not delete the profile or repeat setup/restarts to clear revoked credentials.
+
+Repair returns connection progress, not a QR guarantee. Inspect `doctor`, export
+the current QR privately using `ez plugins export whatsapp qr --output <new-file>`,
+and have the owner scan with the original account. Verify `connected: true` and
+the intended identity. A different account fails closed. Never replay uncertain
+sends after repair. If no QR appears, report the actual doctor state.

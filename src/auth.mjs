@@ -2,14 +2,15 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { atomic } from './store.mjs';
 // One small local account: commit complete auth updates atomically and await each write.
-export async function authState(dir, { BufferJSON, initAuthCreds, proto }) {
+export async function authState(dir, { BufferJSON, initAuthCreds, proto }, fresh = false) {
   const path = join(dir, 'auth.json');
   let saved;
-  try { saved = JSON.parse(await readFile(path, 'utf8'), BufferJSON.reviver); }
+  try { if (!fresh) saved = JSON.parse(await readFile(path, 'utf8'), BufferJSON.reviver); }
   catch (e) { if (e.code !== 'ENOENT') throw e; }
   const data = saved ?? { creds: initAuthCreds(), keys: {} };
-  let pending = Promise.resolve();
+  let pending = Promise.resolve(), retired = false;
   const persist = () => {
+    if (retired) return pending;
     const snapshot = JSON.stringify(data, BufferJSON.replacer);
     const next = pending.then(() => atomic(path, snapshot));
     pending = next; // A persistence failure poisons future writes; never silently continue.
@@ -36,6 +37,7 @@ export async function authState(dir, { BufferJSON, initAuthCreds, proto }) {
       }
     },
     save: persist,
-    flush: () => pending
+    flush: () => pending,
+    retire: () => { retired = true; return pending; }
   };
 }

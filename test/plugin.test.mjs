@@ -245,3 +245,68 @@ test('ongoing exact group watches share provider transport and can be removed', 
   assert.equal(f.service.policy.eligible(row,await f.service.policy.get(),after),false);
   await assert.rejects(f.service.call('task-unwatch',{accountId:'other',conversationId}),{code:'ACCOUNT_MISMATCH'});
 });
+
+test('repair replaces only revoked auth, excludes concurrent resets and stale sockets, and retains account pin', async t => {
+  const f = await fixture(t);
+  const { EventEmitter } = await import('node:events');
+  const lib = await import('@whiskeysockets/baileys');
+  const { createTransport } = await import('../src/transport.mjs');
+  const sockets = [], configs = [];
+  const provider = { ...lib, default: config => {
+    const socket = { ev: new EventEmitter(), user: { id: '15551230000:1@s.whatsapp.net' }, end() {} };
+    sockets.push(socket); configs.push(config); return socket;
+  } };
+  const transport = await createTransport(f.store, provider);
+  t.after(() => transport.close());
+  const service = new Service(f.store, transport);
+  const until = async predicate => {
+    for (let i = 0; i < 200; i++) { if (await predicate()) return; await new Promise(r => setTimeout(r, 5)); }
+    assert.fail('Expected event did not settle');
+  };
+  await transport.start();
+  await assert.rejects(service.call('repair'), { code: 'REPAIR_NOT_ALLOWED' });
+  sockets[0].ev.emit('connection.update', { connection: 'open' });
+  await until(() => transport.status().connected);
+  await assert.rejects(service.call('repair'), { code: 'REPAIR_NOT_ALLOWED' });
+  await f.store.ingest({ id: 'preserved', chat: '15551234567@s.whatsapp.net', text: 'saved' });
+  await f.store.saveOperation({ key: 'uncertain', state: 'uncertain' });
+  await service.call('policy', { mode: 'selected' });
+  await service.call('task-watch', { accountId: '15551230000@s.whatsapp.net', conversationId: '15551234567@s.whatsapp.net', expiresAt: Date.now() + 60000 });
+  const { readdir } = await import('node:fs/promises');
+  const snapshot = async () => {
+    const result = {};
+    for (const path of await readdir(f.dir, { recursive: true })) {
+      if (path === 'auth.json' || path === 'pairing.png') continue;
+      if ((await stat(join(f.dir, path))).isFile()) result[path] = await readFile(join(f.dir, path), 'utf8');
+    }
+    return result;
+  };
+  const before = await snapshot();
+  for (const code of [440, 403, 500]) {
+    sockets[0].ev.emit('connection.update', { connection: 'close', lastDisconnect: { error: { output: { statusCode: code } } } });
+    await until(() => transport.status().disconnectCode === code);
+    await assert.rejects(service.call('repair'), { code: 'REPAIR_NOT_ALLOWED' });
+  }
+  sockets[0].ev.emit('connection.update', { connection: 'close', lastDisconnect: { error: { output: { statusCode: 401 } } } });
+  await until(() => transport.status().disconnectCode === 401);
+  const results = await Promise.allSettled([service.call('repair'), service.call('repair')]);
+  assert.equal(results.filter(r => r.status === 'fulfilled').length, 1);
+  assert.equal(sockets.length, 2);
+  assert.notDeepEqual(configs[0].auth.creds.noiseKey, configs[1].auth.creds.noiseKey);
+  const newAuth = await readFile(join(f.dir, 'auth.json'), 'utf8');
+  await configs[0].auth.keys.set({ session: { stale: { value: 'old' } } });
+  sockets[0].ev.emit('creds.update', {});
+  sockets[0].ev.emit('connection.update', { qr: 'stale-qr', connection: 'open' });
+  sockets[0].ev.emit('messages.upsert', { type: 'notify', messages: [{ key: { id: 'stale', remoteJid: '15551234567@s.whatsapp.net' }, message: { conversation: 'stale' } }] });
+  sockets[1].ev.emit('connection.update', { qr: 'fresh-private-qr' });
+  await until(() => transport.status().qrPath);
+  assert.equal(await readFile(join(f.dir, 'auth.json'), 'utf8'), newAuth);
+  assert.equal((await stat(join(f.dir, 'auth.json'))).mode & 0o777, 0o600);
+  assert.deepEqual(await snapshot(), before);
+  await assert.rejects(service.call('repair'), { code: 'REPAIR_NOT_ALLOWED' });
+  sockets[1].user.id = '15559999999:1@s.whatsapp.net';
+  sockets[1].ev.emit('connection.update', { connection: 'open' });
+  await until(() => transport.status().state === 'account-mismatch');
+  assert.deepEqual(await snapshot(), before);
+  await assert.rejects(service.call('repair'), { code: 'REPAIR_NOT_ALLOWED' });
+});
