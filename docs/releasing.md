@@ -63,7 +63,7 @@ automated gates; deferred live checks remain required for stable release.
 GitHub repositories use `jdorado`; npm packages use `jc_stack`. Verify
 `npm whoami --registry https://registry.npmjs.org/` returns `jc_stack` before
 publishing. Never infer npm scope ownership from a GitHub login. After publishing,
-read back `npm view @jc_stack/ez-whatsapp@0.1.0-beta.13 name version dist-tags --json`
+read back `npm view @jc_stack/ez-whatsapp@0.1.0-beta.14 name version dist-tags --json`
 (using the release being published), download it with `npm pack`, and verify its
 contents/checksum against the reviewed artifact. Keep the npm artifact and
 GitHub tag on the same reviewed commit. Do not create a new token to bypass 2FA.
