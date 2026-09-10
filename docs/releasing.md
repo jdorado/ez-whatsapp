@@ -39,7 +39,9 @@ No automatic dependency updates, release bot or credentials in pull-request CI.
    publishing that tarball:
    `npm publish /absolute/candidate.tgz --access public --tag beta --registry https://registry.npmjs.org/`
    for prereleases (use `--tag latest` only for an approved stable release).
-   Use interactive npm authentication with 2FA; never paste tokens into CI or docs.
+   For unattended beta publication, use the shared OIDC procedure below.
+   Interactive publication uses npm authentication with 2FA; never paste tokens
+   into CI or docs.
 8. Create the GitHub release from CHANGELOG.md, attach artifact/checksum, and
    install the registry version on a clean host. Verify metadata and the same
    onboarding path before posting launch copy. Stop rollout on failure; publish
@@ -75,3 +77,36 @@ identity and operation receipts survive replacement. No QR re-pairing or send
 replay is part of an upgrade. State/deployment changes require a reviewed migration.
 Follow the main package's `docs/upgrades.md`. Agent-led VM and live-provider
 plugin upgrade acceptance remain pending for this beta.
+
+## Shared OIDC beta publication
+
+`.github/workflows/publish-beta.yml` is generated from the reviewed shared
+publisher in `jdorado/ez-agents`. Follow its
+[canonical publishing procedure](https://github.com/jdorado/ez-agents/blob/main/docs/trusted-publishing.md)
+for staging, receipt fields, dispatch and failure reconciliation. Keep the
+reusable workflow reference and `publisher-sha` pinned to the same reviewed full
+commit. Regenerate through a PR; never copy publishing implementation here.
+The caller requires the four `test (OS, NODE)` matrix checks for Ubuntu/macOS
+and Node 22/24, plus `docker`, from this repository's `ci.yml` push to `main`.
+
+After the checks and independent review above, stage the exact tested bytes as
+`candidate.tgz` and a sanitized `release-receipt.json` on draft prerelease
+`vVERSION`. Its tag must identify the tested current `main` commit. The receipt
+binds `jdorado/ez-whatsapp`, `@jc_stack/ez-whatsapp`, version, full source SHA,
+SHA-256 and public independent-review/test evidence URLs. Dispatch the caller
+on `main` with the draft's numeric release ID, version, source SHA and verified
+artifact SHA-256. Actions publishes those bytes without rebuilding. Only
+`X.Y.Z-beta.N` and the `beta` dist-tag are supported.
+
+The npm package owner separately authenticates and enrolls repository
+`jdorado/ez-whatsapp`, caller filename `publish-beta.yml`, direct publication
+enabled and no environment (the shared job currently declares none). npm
+validates the calling workflow identity. Verify through npm settings or
+`npm trust list @jc_stack/ez-whatsapp`. Workflow merge does not establish trust;
+never supply npm tokens or private profiles to these jobs.
+
+Retain the Actions registry readback and verified digest before completing and
+reading back the public GitHub prerelease and required installation QA. Inspect
+registry state after uncertain publication before retrying. Never publish merely
+to test authentication or change `latest`. Existing release and repair work
+retains its own branch, candidate and accepted QA limitations.
