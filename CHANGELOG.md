@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.0-beta.15
+
+- Adopt the corrected shared publisher main-CI selection. Preserve the reviewed WhatsApp runtime and earlier immutable unpublished candidates.
+- Testing beta; previously documented live-provider and fresh-host acceptance limits remain.
+
 ## 0.1.0-beta.14
 
 - Prepare a fresh immutable candidate from the reviewed latest-tag publisher
