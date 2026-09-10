@@ -1,6 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.1.0-beta.13
+
+- Support exact group JIDs and persistent incoming-only conversation watches
+  with revocation, preserving core-owned authorization and uncertain receipts.
+- Make verified shipping proactive and agent-owned. Synthetic transport tests
+  pass; live group-recipient and final fresh-host/reboot acceptance remain pending.
 
 - Support core message-v1 task capture and sending for individual contacts, with
   expected-account checks and idempotent bound receipts. Declare command exposure.
