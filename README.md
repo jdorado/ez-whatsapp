@@ -129,8 +129,7 @@ replacing an existing host service or upgrading an account's image.
 
 Stopping a container does not revoke WhatsApp access. Unlink only this device in
 WhatsApp Linked Devices to revoke it; retain/delete private data separately as
-intended. Logged-out or replaced sessions need account attention, not automated
-credential replacement. Network reconnects never retry uncertain user sends.
+intended. Logged-out sessions require explicit `repair`; replaced sessions need account attention. Network reconnects never retry uncertain user sends.
 
 ## Development and release
 
@@ -239,3 +238,19 @@ The messaging-task transport accepts exact individual or group JIDs and advertis
 date timestamp and `task-unwatch` removes their selected attention. Other finite
 watches retain the 72-hour bound. The adapter grants no execution or disclosure
 authority: the core must check its conversation grant before every send.
+
+## Repair a revoked session
+
+When the owner requests reconnection and `doctor` reports `needs-attention`
+with `disconnectCode: 401`, run `ez whatsapp repair` through the existing bound
+registry. This explicitly replaces only revoked authentication in the running
+service. It preserves the pinned account identity, messages, cursors, policy,
+watches, operation keys and receipts; core-owned grants are untouched.
+It refuses connected, connecting, replaced, forbidden or other non-401 states.
+Do not delete the profile or repeat setup/restarts to clear revoked credentials.
+
+Repair returns connection progress, not a QR guarantee. Inspect `doctor`, export
+the current QR privately using `ez plugins export whatsapp qr --output <new-file>`,
+and have the owner scan with the original account. Verify `connected: true` and
+the intended identity. A different account fails closed. Never replay uncertain
+sends after repair. If no QR appears, report the actual doctor state.

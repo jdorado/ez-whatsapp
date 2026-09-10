@@ -8,6 +8,7 @@ export const help = `ez-whatsapp — standalone WhatsApp account plugin
 
   setup      Inspect onboarding in the running Docker service; return QR or identity
   serve      Foreground socket service (captures messages; no agent execution)
+  repair     Replace revoked (401) authentication; preserve pinned identity and records
   doctor     Live connection identity, QR image path, capabilities
   inbox      Captured messages: --after CURSOR --limit 1..100 [--chat JID]
   policy     Read wake policy, or set --mode manual|selected|all
@@ -55,7 +56,7 @@ export async function main(argv = process.argv.slice(2)) {
       result = await client(profile, 'doctor', undefined, v.socket);
       result = { ...result, next: 'Scan the current QR if needed, then verify connected identity with doctor' };
     } else {
-      if (!['doctor','inbox','send','verify','operation','policy','subscribe','unsubscribe'].includes(command)) throw fail('INVALID_INPUT', 'Unknown command; use --help');
+      if (!['repair','doctor','inbox','send','verify','operation','policy','subscribe','unsubscribe'].includes(command)) throw fail('INVALID_INPUT', 'Unknown command; use --help');
       const args = { mode: v.mode, to: v.to, key: v['idempotency-key'], preview: v.preview, after: v.after === undefined ? 0 : Number(v.after), limit: v.limit === undefined ? 20 : Number(v.limit), chat: v.chat };
       if (command === 'send') {
         if (!v['text-file']) throw fail('INVALID_INPUT', 'Supply --text-file');
