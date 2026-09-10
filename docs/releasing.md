@@ -37,7 +37,7 @@ No automatic dependency updates, release bot or credentials in pull-request CI.
    license/third-party obligations and known limits. Merge the release PR and
    verify its tree matches the reviewed source before tagging `v<version>` and
    publishing that tarball:
-   `npm publish /absolute/candidate.tgz --access public --tag beta --registry https://registry.npmjs.org/`
+   `npm publish /absolute/candidate.tgz --access public --tag latest --registry https://registry.npmjs.org/`
    for prereleases (use `--tag latest` only for an approved stable release).
    For unattended beta publication, use the shared OIDC procedure below.
    Interactive publication uses npm authentication with 2FA; never paste tokens
@@ -55,7 +55,7 @@ credential revocation; do not delete volumes as a routine rollback.
 ## Beta channel
 
 Use SemVer prereleases (`0.1.0-beta.1`), GitHub's prerelease flag and npm's
-`--tag beta`; never mark a beta latest/stable. For this first beta the maintainer
+`--tag latest`; keep SemVer and GitHub prerelease status. For this first beta the maintainer
 explicitly deferred real account/reboot acceptance. Keep that limitation in the
 README and release notes. Source/tarball publication is permitted after the
 automated gates; deferred live checks remain required for stable release.
@@ -96,7 +96,7 @@ binds `jdorado/ez-whatsapp`, `@jc_stack/ez-whatsapp`, version, full source SHA,
 SHA-256 and public independent-review/test evidence URLs. Dispatch the caller
 on `main` with the draft's numeric release ID, version, source SHA and verified
 artifact SHA-256. Actions publishes those bytes without rebuilding. Only
-`X.Y.Z-beta.N` and the `beta` dist-tag are supported.
+`X.Y.Z-beta.N` versions published to the `latest` dist-tag are supported.
 
 The npm package owner separately authenticates and enrolls repository
 `jdorado/ez-whatsapp`, caller filename `publish-beta.yml`, direct publication
@@ -108,5 +108,12 @@ never supply npm tokens or private profiles to these jobs.
 Retain the Actions registry readback and verified digest before completing and
 reading back the public GitHub prerelease and required installation QA. Inspect
 registry state after uncertain publication before retrying. Never publish merely
-to test authentication or change `latest`. Existing release and repair work
+to test authentication. Existing release and repair work
 retains its own branch, candidate and accepted QA limitations.
+
+Approved beta publication updates latest automatically through the shared OIDC
+publisher. No second tag write or local login is needed for enrolled packages.
+The legacy beta tag is not advanced. Versions/GitHub releases remain prereleases;
+stable-only deployment policies remain unchanged. Older Ez updaters need an
+exact-version core update containing latest-aware discovery. This policy change
+does not republish existing versions; prepare a new version for changed metadata.

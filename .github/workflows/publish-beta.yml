@@ -29,10 +29,10 @@ jobs:
       actions: read
       pull-requests: read
       id-token: write
-    uses: jdorado/ez-agents/.github/workflows/npm-beta-shared.yml@49174943cc2dd96775bf8a034170fca4cc5f75e9
+    uses: jdorado/ez-agents/.github/workflows/npm-beta-shared.yml@f5176f4eddbded50abf0d1bed48431c43a39bf1c
     with:
       package: '@jc_stack/ez-whatsapp'
-      publisher-sha: '49174943cc2dd96775bf8a034170fca4cc5f75e9'
+      publisher-sha: 'f5176f4eddbded50abf0d1bed48431c43a39bf1c'
       required-checks: '["test (ubuntu-latest, 22)","test (ubuntu-latest, 24)","test (macos-latest, 22)","test (macos-latest, 24)","docker"]'
       release-id: ${{ inputs.release-id }}
       version: ${{ inputs.version }}
