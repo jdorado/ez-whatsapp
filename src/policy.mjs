@@ -37,8 +37,15 @@ export class Policy {
       return value;
     });
   }
+  async unwatch(chat) {
+    return this.store.serial(async () => {
+      const watches = await readJSON(this.store.path('task-watches.json'), {});
+      delete watches[chat]; await writeJSON(this.store.path('task-watches.json'), watches);
+      return { watching: false };
+    });
+  }
   async watch(chat, expiresAt) {
-    if (!Number.isFinite(expiresAt) || expiresAt <= Date.now() || expiresAt > Date.now() + 72 * 3600000) throw fail('INVALID_INPUT', 'Invalid task expiry');
+    if (!Number.isFinite(expiresAt) || expiresAt <= Date.now() || (expiresAt !== 8640000000000000 && expiresAt > Date.now() + 72 * 3600000)) throw fail('INVALID_INPUT', 'Invalid task expiry');
     return this.store.serial(async () => {
       const watches = await readJSON(this.store.path('task-watches.json'), {});
       for (const [id, floor] of Object.entries(watches)) if (floor.expiresAt <= Date.now()) delete watches[id];

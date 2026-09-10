@@ -231,3 +231,11 @@ records retain the original ID. Groups, message text and display names cannot
 supply this mapping. An explicit internal-ID watch still works; if both identities
 are watched, the phone match takes precedence and emits one event. Explicit task
 watches take precedence over broad inbox attention.
+
+### Ongoing conversation grants
+
+The messaging-task transport accepts exact individual or group JIDs and advertises
+`persistentWatch: true`. Core-approved ongoing watches use the maximum JavaScript
+date timestamp and `task-unwatch` removes their selected attention. Other finite
+watches retain the 72-hour bound. The adapter grants no execution or disclosure
+authority: the core must check its conversation grant before every send.
