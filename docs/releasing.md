@@ -38,7 +38,8 @@ No automatic dependency updates, release bot or credentials in pull-request CI.
    verify its tree matches the reviewed source before tagging `v<version>` and
    publishing that tarball:
    `npm publish /absolute/candidate.tgz --access public --tag latest --registry https://registry.npmjs.org/`
-   for prereleases (use `--tag latest` only for an approved stable release).
+   for approved prereleases as well; latest is the default distribution tag,
+   not a stable-version claim.
    For unattended beta publication, use the shared OIDC procedure below.
    Interactive publication uses npm authentication with 2FA; never paste tokens
    into CI or docs.
