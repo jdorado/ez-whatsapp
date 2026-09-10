@@ -48,3 +48,19 @@ identity and operation receipts survive replacement. No QR re-pairing or send
 replay is part of an upgrade. State/deployment changes require a reviewed migration.
 Follow the main package's `docs/upgrades.md`. Agent-led VM and live-provider
 plugin upgrade acceptance remain pending for this beta.
+
+## Repair a revoked session
+
+When the owner requests reconnection and `doctor` reports `needs-attention`
+with `disconnectCode: 401`, run `ez whatsapp repair` through the existing bound
+registry. This explicitly replaces only revoked authentication in the running
+service. It preserves the pinned account identity, messages, cursors, policy,
+watches, operation keys and receipts; core-owned grants are untouched.
+It refuses connected, connecting, replaced, forbidden or other non-401 states.
+Do not delete the profile or repeat setup/restarts to clear revoked credentials.
+
+Repair returns connection progress, not a QR guarantee. Inspect `doctor`, export
+the current QR privately using `ez plugins export whatsapp qr --output <new-file>`,
+and have the owner scan with the original account. Verify `connected: true` and
+the intended identity. A different account fails closed. Never replay uncertain
+sends after repair. If no QR appears, report the actual doctor state.

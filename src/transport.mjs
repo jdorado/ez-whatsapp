@@ -7,7 +7,7 @@ import { normalize } from './messages.mjs';
 import { atomic, fail, readJSON, writeJSON, privateDir, hash } from './store.mjs';
 
 export async function createTransport(store, lib = baileys) {
-  const auth = await authState(store.dir, lib);
+  let auth = await authState(store.dir, lib);
   await privateDir(store.path('outgoing'));
   const logger = pino({ level: 'silent' });
   let socket, timer, stopped = false, attempts = 0;
@@ -22,6 +22,26 @@ export async function createTransport(store, lib = baileys) {
     status: () => ({ ...status, ...(status.qrPath ? { qrAgeMs: Date.now() - Date.parse(status.qrCreatedAt), qrRefreshAfterMs: 60000 } : {}) }),
     async start() { await removeQR(); connect(); },
     async close() { stopped = true; clearTimeout(timer); socket?.end(undefined); await events; await auth.flush(); await removeQR(); },
+    async repair() {
+      await events;
+      if (stopped || status.connected || status.state !== 'needs-attention' || status.disconnectCode !== lib.DisconnectReason.loggedOut)
+        throw fail('REPAIR_NOT_ALLOWED', 'Repair requires a logged-out (401) session; inspect doctor');
+      // Claim the transition before awaiting I/O so concurrent requests cannot reset twice.
+      status = { connected: false, state: 'repairing', account: null, qrPath: null };
+      const previous = socket;
+      socket = null;
+      clearTimeout(timer);
+      try {
+        await auth.retire();
+        previous?.end(undefined);
+        await removeQR();
+        auth = await authState(store.dir, lib, true);
+        await auth.save();
+        attempts = 0;
+        connect();
+        return api.status();
+      } catch (error) { fatal(); throw error; }
+    },
     async verify(jid) {
       if (!status.connected) throw fail('UNAVAILABLE', 'WhatsApp is not connected');
       if (jid.endsWith('@g.us')) {
@@ -53,7 +73,8 @@ export async function createTransport(store, lib = baileys) {
       getMessage: async key => key.id ? await readJSON(store.path(`outgoing/${hash(key.id)}.json`), undefined) : undefined
     });
     const current = socket;
-    current.ev.on('creds.update', () => enqueue(() => auth.save()));
+    const currentAuth = auth;
+    current.ev.on('creds.update', () => enqueue(() => current === socket && !stopped ? currentAuth.save() : undefined));
     current.ev.on('connection.update', update => enqueue(async () => {
       if (current !== socket || stopped) return;
       if (update.qr) {
@@ -84,6 +105,7 @@ export async function createTransport(store, lib = baileys) {
       }
     }));
     current.ev.on('messages.upsert', batch => enqueue(async () => {
+      if (current !== socket || stopped) return;
       for (const message of batch.messages) {
         const row = normalize(message, lib.normalizeMessageContent, batch.type);
         if (row) await store.ingest(row);
@@ -91,6 +113,7 @@ export async function createTransport(store, lib = baileys) {
       }
     }));
     current.ev.on('messages.update', updates => enqueue(async () => {
+      if (current !== socket || stopped) return;
       for (const { key, update } of updates) {
         if (!key.fromMe || !key.id) continue;
         const s = update.status;
@@ -100,6 +123,7 @@ export async function createTransport(store, lib = baileys) {
       }
     }));
     current.ev.on('message-receipt.update', updates => enqueue(async () => {
+      if (current !== socket || stopped) return;
       for (const { key, receipt } of updates) {
         // Group receipts are per participant; do not claim whole-group delivery.
         if (!key.fromMe || key.remoteJid?.endsWith('@g.us')) continue;
