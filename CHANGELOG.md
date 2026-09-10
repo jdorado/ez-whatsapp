@@ -1,6 +1,18 @@
 # Changelog
 
-## 0.1.0-beta.13
+## 0.1.0-beta.14
+
+- Prepare a fresh immutable candidate from the reviewed latest-tag publisher
+  migration; beta.13 remains an unpublished draft and is not overwritten.
+- Publish approved betas to npm `latest` through the shared OIDC publisher,
+  retaining SemVer and GitHub prerelease status and stable-only update policies.
+- Include beta.13's revoked-session repair, individual task capture/sending,
+  group JIDs and incoming-only watches. Runtime code and dependencies are
+  unchanged from that reviewed candidate.
+- Live account onboarding, group-recipient, fresh-host/reboot and agent-led
+  upgrade acceptance remain deferred; automated fixtures do not prove delivery.
+
+## 0.1.0-beta.13 — unpublished draft
 
 - Repair explicitly revoked (401) authentication while preserving the pinned
   identity, captured records, watches and uncertain operation receipts.
