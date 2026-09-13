@@ -76,10 +76,12 @@ export async function createTransport(store, lib = baileys) {
     let qrCount = 0;
     const currentAuth = auth;
     current.ev.on('creds.update', () => enqueue(() => current === socket && !stopped ? currentAuth.save() : undefined));
-    current.ev.on('connection.update', update => enqueue(async () => {
+    current.ev.on('connection.update', update => {
+      const receivedAt = new Date().toISOString();
+      enqueue(async () => {
       if (current !== socket || stopped) return;
       if (update.qr) {
-        const qrCreatedAt = new Date().toISOString();
+        const qrCreatedAt = receivedAt;
         // Baileys rc14 rotates the first QR after 60s, later references after 20s.
         // Report that window, but leave the actual timer with the provider.
         const qrRefreshAfterMs = ++qrCount === 1 ? 60000 : 20000;
@@ -108,7 +110,8 @@ export async function createTransport(store, lib = baileys) {
           timer = setTimeout(connect, delay);
         }
       }
-    }));
+      });
+    });
     current.ev.on('messages.upsert', batch => enqueue(async () => {
       if (current !== socket || stopped) return;
       for (const message of batch.messages) {
