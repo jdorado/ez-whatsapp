@@ -268,6 +268,13 @@ and delivery have not been verified.
 
 ### Linking compatibility
 
+QR rotation uses Baileys' defaults: about 60 seconds for the first code and
+20 seconds for replacements. `doctor` and `qr` expose creation time and the
+remaining rotation window; it is not a guarantee of phone acceptance. Send a
+fresh image while the owner is ready to scan. Previously delivered images do
+not refresh automatically. Do not override `qrTimeout` to extend those windows.
+
+
 The transport uses Baileys’ default browser identity. The browser name is part
 of the pairing protocol and QR payload, so it must not be replaced with the
 plugin’s display name. After upgrading a failed, unlinked installation, export

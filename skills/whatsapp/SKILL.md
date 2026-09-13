@@ -35,6 +35,18 @@ isolated. Reconcile uncertain operations on their original account and key;
 never resend through a different account. `repair --account NAME` retains that
 account's existing identity and requires its revoked 401 state.
 
+## QR freshness
+
+Baileys rotates the first QR after about 60 seconds and replacements after about
+20 seconds. Never assume every QR lasts a minute. Inspect `doctor --account NAME`
+for `qrCreatedAt`, `qrRefreshAfterMs` and `qrRemainingMs`. If the current code has
+less than 15 seconds left, wait for the next `qrCreatedAt` before exporting.
+Export and send immediately while the owner has the Linked Devices scanner ready.
+The `qr` command also returns timing with its PNG. A previously sent image does
+not refresh when the provider rotates it; send a new image for a new attempt.
+Do not diagnose a phone/account restriction from a rejected stale QR. Verify
+`connected: true` after the new scan before reporting success.
+
 ## Onboarding
 
 For Ez, begin only after the main agent has paired its owner and produced a

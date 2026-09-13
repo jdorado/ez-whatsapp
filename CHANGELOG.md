@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Remove the forced 60-second QR rotation override. Keep Baileys' first-QR and
+  replacement-QR timing, report remaining time, and reject expired QR exports.
+  Previously, a replacement QR could still be offered after the provider's
+  normal 20-second rotation window. Real successful pairing remains a live QA gate.
+
 - Link named WhatsApp accounts for distinct purposes in one registered plugin.
   Keep existing data as default and isolate profiles, QR images, inboxes, policies,
   source sockets and receipts. Require explicit account selection for operational

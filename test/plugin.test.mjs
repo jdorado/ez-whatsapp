@@ -136,6 +136,15 @@ test('provider events create private QR, pin identity, capture messages and reje
   await until(() => transport.status().qrPath);
   assert.equal((await stat(transport.status().qrPath)).mode & 0o777, 0o600);
   assert.equal(config.markOnlineOnConnect, false);
+  assert.equal(Object.hasOwn(config, 'qrTimeout'), false, 'Keep provider-native QR rotation');
+  assert.equal(transport.status().qrRefreshAfterMs, 60000);
+  assert.ok(transport.status().qrRemainingMs > 0 && transport.status().qrRemainingMs <= 60000);
+  const firstQrTime = transport.status().qrCreatedAt;
+  await new Promise(r => setTimeout(r, 5));
+  socket.ev.emit('connection.update', { qr: 'second-synthetic-pairing' });
+  await until(() => transport.status().qrCreatedAt !== firstQrTime);
+  assert.equal(transport.status().qrRefreshAfterMs, 20000);
+  assert.ok(transport.status().qrRemainingMs > 0 && transport.status().qrRemainingMs <= 20000);
   // The browser name is protocol data: custom branding becomes OTHER_WEB_CLIENT
   // in the QR, unlike the supported default used by a plain Baileys socket.
   const browser = { ...lib.DEFAULT_CONNECTION_CONFIG, ...config }.browser;

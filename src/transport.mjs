@@ -19,7 +19,7 @@ export async function createTransport(store, lib = baileys) {
   const enqueue = fn => { events = events.then(fn).catch(fatal); };
   const api = {
     onReceipt: async () => {},
-    status: () => ({ ...status, ...(status.qrPath ? { qrAgeMs: Date.now() - Date.parse(status.qrCreatedAt), qrRefreshAfterMs: 60000 } : {}) }),
+    status: () => ({ ...status, ...(status.qrPath ? { qrAgeMs: Date.now() - Date.parse(status.qrCreatedAt), qrRemainingMs: Math.max(0, Date.parse(status.qrCreatedAt) + status.qrRefreshAfterMs - Date.now()) } : {}) }),
     async start() { await removeQR(); connect(); },
     async close() { stopped = true; clearTimeout(timer); socket?.end(undefined); await events; await auth.flush(); await removeQR(); },
     async repair() {
@@ -68,18 +68,23 @@ export async function createTransport(store, lib = baileys) {
     if (stopped) return;
     status = { ...status, connected: false, state: 'connecting' };
     socket = lib.default({
-      auth: auth.state, logger, qrTimeout: 60000, markOnlineOnConnect: false, syncFullHistory: false,
+      auth: auth.state, logger, markOnlineOnConnect: false, syncFullHistory: false,
       shouldSyncHistoryMessage: () => false, emitOwnEvents: false,
       getMessage: async key => key.id ? await readJSON(store.path(`outgoing/${hash(key.id)}.json`), undefined) : undefined
     });
     const current = socket;
+    let qrCount = 0;
     const currentAuth = auth;
     current.ev.on('creds.update', () => enqueue(() => current === socket && !stopped ? currentAuth.save() : undefined));
     current.ev.on('connection.update', update => enqueue(async () => {
       if (current !== socket || stopped) return;
       if (update.qr) {
+        const qrCreatedAt = new Date().toISOString();
+        // Baileys rc14 rotates the first QR after 60s, later references after 20s.
+        // Report that window, but leave the actual timer with the provider.
+        const qrRefreshAfterMs = ++qrCount === 1 ? 60000 : 20000;
         await atomic(qrPath, await QRCode.toBuffer(update.qr, { type: 'png', width: 640, margin: 4 }));
-        status = { ...status, state: 'needs-scan', qrPath, qrCreatedAt: new Date().toISOString() };
+        status = { ...status, state: 'needs-scan', qrPath, qrCreatedAt, qrRefreshAfterMs };
       }
       if (update.connection === 'open') {
         attempts = 0; await removeQR();
