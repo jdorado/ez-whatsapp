@@ -253,7 +253,7 @@ for `default`. `doctor` and `setup` still inspect default when omitted.
 
 `accounts` lists each account's socket. Register each named account as a separate
 core event source using that socket (for example,
-`/plugins/whatsapp/accounts/sales.sock`). Existing root socket registrations
+`/plugins/whatsapp/service.sock.accounts/sales.sock`). Existing root socket registrations
 remain bound to default; events are not merged. Each socket exposes the same
 message-v1 account checks and independent cursor. Binding a new source grants
 no reply authority. Do not reuse another account's source cursor or task grant.

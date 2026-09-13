@@ -92,7 +92,7 @@ test('separate CLI selects account and returns its QR without profile access', a
   await run(['account-add', '--account', 'sales', '--purpose', 'Sales']);
   assert.equal((await run(['setup', '--account', 'sales'])).account.jid, jids.sales);
   const qrPath = f.transports.get('sales').store.qrPath;
-  assert.equal(qrPath, join(f.dir, 'accounts', 'sales.png'));
+  assert.equal(qrPath, join(`${socket}.accounts`, 'sales.png'));
   await writeFile(qrPath, Buffer.from('synthetic-png'));
   f.transports.get('sales').setStatus({ connected: false, qrPath, qrCreatedAt: '2026-09-13T00:00:00Z' });
   const qr = await run(['qr', '--account', 'sales']);
@@ -110,6 +110,35 @@ test('corrupt registries and symlink account parents fail closed without touchin
   await assert.rejects(serve(dir, create), { code: 'CORRUPT_STATE' });
   await writeFile(join(dir, 'accounts.json'), JSON.stringify([{ name: 'sales', purpose: '' }]));
   await symlink(outside, join(dir, 'accounts'));
-  await assert.rejects(serve(dir, create), { code: 'UNSAFE_PATH' });
+  const running = await serve(dir, create);
+  try {
+    const accounts = (await client(dir, 'accounts')).accounts;
+    assert.equal(accounts.find(a => a.name === 'sales').errorCode, 'UNSAFE_PATH');
+    await assert.rejects(client(dir, 'doctor', { account: 'sales' }), { code: 'ACCOUNT_NOT_FOUND' });
+    await client(dir, 'doctor'); // A failed named profile must not disable default.
+  } finally { await running.close(); }
   await assert.rejects(readFile(join(outside, 'sales', 'writer.lock')), { code: 'ENOENT' });
+});
+
+test('overlong named sockets are rejected before registration and root sockets have isolated namespaces', async t => {
+  const dir = await mkdtemp('/tmp/wa-');
+  const a = join(dir, 'a'), b = join(dir, 'b');
+  const create = async () => ({ status: () => ({ connected: true }), start: async () => {}, close: async () => {} });
+  const longSocket = join(dir, 's'.repeat(65 - dir.length) + '.sock');
+  const first = await serve(a, create, longSocket);
+  const otherSocket = join(dir, 'other.sock');
+  const second = await serve(b, create, otherSocket);
+  let restarted;
+  t.after(async () => { await first.close(); await second.close(); await restarted?.close(); await rm(dir, { recursive: true, force: true }); });
+  await assert.rejects(client(a, 'account-add', { account: 'x'.repeat(32) }, longSocket), { code: 'INVALID_INPUT' });
+  assert.equal((await client(a, 'accounts', {}, longSocket)).accounts.length, 1);
+  await assert.rejects(readFile(join(a, 'accounts.json')), { code: 'ENOENT' });
+  await first.close();
+  restarted = await serve(a, create, longSocket);
+  assert.equal((await client(a, 'doctor', {}, longSocket)).connected, true);
+  const namedA = await client(a, 'account-add', { account: 'sales' }, longSocket);
+  const namedB = await client(b, 'account-add', { account: 'sales' }, otherSocket);
+  assert.notEqual(namedA.socket, namedB.socket);
+  assert.equal((await client(a, 'doctor', {}, namedA.socket)).profile, join(a, 'accounts', 'sales'));
+  assert.equal((await client(b, 'doctor', {}, namedB.socket)).profile, join(b, 'accounts', 'sales'));
 });
