@@ -48,8 +48,12 @@ test('bounded history uses exact captured anchor, milliseconds and private reque
   assert.ok(rows.slice(1).every(r => r.source === 'history'));
   assert.deepEqual((await policy.events()).events, []);
   const restarted = new History(store);
+  // Simulate a crash after rows committed but before request counters did.
+  await writeJSON(store.path('history-request.json'), request);
+  assert.equal((await restarted.status()).received, 2);
   await restarted.receive(batch, x => x, 6);
   assert.equal((await restarted.status()).received, 2);
+  assert.equal((await store.messages()).messages.length, 3);
 });
 test('requests preserve uncertainty, expire without retries and reject late responses', async t => {
   const { store, history } = await fixture(t);

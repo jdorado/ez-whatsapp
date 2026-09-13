@@ -9,6 +9,9 @@ export class History {
   async status() {
     const value = await readJSON(this.store.path('history-request.json'), null);
     if (!value) return { state: 'none', coverage: 'partial' };
+    // Rows are authoritative if a crash interrupted the later request update.
+    value.received = (await this.store.messages(0, Number.MAX_SAFE_INTEGER)).messages.filter(row => row.historyRequestId === value.id).length;
+    if (value.received > 0) value.state = 'received';
     return { ...value, state: value.state === 'requested' && Date.now() >= value.expiresAt ? 'expired' : value.state };
   }
   request(args, fetch) {
@@ -45,7 +48,7 @@ export class History {
       for (const message of batch.messages ?? []) {
         if (value.received >= value.limit) break;
         const row = normalize(message, unwrap, 'history');
-        if (row?.chat === value.chat && await this.store.ingest(row)) value.received++;
+        if (row?.chat === value.chat && await this.store.ingest({ ...row, historyRequestId: value.id })) value.received++;
       }
       value.state = 'received'; // Provider response, never a complete-export claim.
       value.respondedAt = new Date().toISOString();
