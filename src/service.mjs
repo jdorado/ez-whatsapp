@@ -19,7 +19,9 @@ export class Service {
       return { mimeType: 'image/png', base64: png.toString('base64'), qrCreatedAt: status.qrCreatedAt, qrRefreshAfterMs: status.qrRefreshAfterMs, qrRemainingMs: current.qrRemainingMs };
     }
     if (command === 'repair') return this.transport.repair();
-    if (command === 'doctor') return { ...this.transport.status(), profile: this.store.dir, capabilities: ['send-text', 'read-captured-messages'], eventSource: true, wakePolicy: await this.policy.get(), hostDispatchRequired: true };
+    if (command === 'history') return this.transport.historyRequest(args);
+    if (command === 'history-status') return this.transport.historyStatus();
+    if (command === 'doctor') return { ...this.transport.status(), profile: this.store.dir, capabilities: ['send-text', 'read-captured-messages', 'request-chat-history'], eventSource: true, wakePolicy: await this.policy.get(), hostDispatchRequired: true };
     if (command === 'policy') return args.mode === undefined ? this.policy.get() : this.policy.change(command, args);
     if (['subscribe', 'unsubscribe'].includes(command)) return this.policy.change(command, args);
     if (command === 'events-head') return { cursor: await this.policy.head(), taskProtocol: 'message-v1', persistentWatch: true, accountId: this.transport.status().account?.jid ?? null };

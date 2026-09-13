@@ -4,9 +4,11 @@ import QRCode from 'qrcode';
 import { unlink } from 'node:fs/promises';
 import { authState } from './auth.mjs';
 import { normalize } from './messages.mjs';
+import { History } from './history.mjs';
 import { atomic, fail, readJSON, writeJSON, privateDir, hash } from './store.mjs';
 
 export async function createTransport(store, lib = baileys) {
+  const history = new History(store);
   let auth = await authState(store.dir, lib);
   await privateDir(store.path('outgoing'));
   const logger = pino({ level: 'silent' });
@@ -21,7 +23,16 @@ export async function createTransport(store, lib = baileys) {
     onReceipt: async () => {},
     status: () => ({ ...status, ...(status.qrPath ? { qrAgeMs: Date.now() - Date.parse(status.qrCreatedAt), qrRemainingMs: Math.max(0, Date.parse(status.qrCreatedAt) + status.qrRefreshAfterMs - Date.now()) } : {}) }),
     async start() { await removeQR(); connect(); },
-    async close() { stopped = true; clearTimeout(timer); socket?.end(undefined); await events; await auth.flush(); await removeQR(); },
+    async close() { stopped = true; clearTimeout(timer); socket?.end(undefined); await events; await history.queue; await auth.flush(); await removeQR(); },
+    historyStatus: () => history.status(),
+    async historyRequest(args) {
+      if (stopped || !status.connected) throw fail('UNAVAILABLE', 'WhatsApp must be connected to request history');
+      const current = socket;
+      return history.request(args, (count, key, timestamp) => {
+        if (stopped || !status.connected || socket !== current) throw fail('UNAVAILABLE', 'Connection changed');
+        return current.fetchMessageHistory(count, key, timestamp);
+      });
+    },
     async repair() {
       await events;
       if (stopped || status.connected || status.state !== 'needs-attention' || status.disconnectCode !== lib.DisconnectReason.loggedOut)
@@ -69,7 +80,7 @@ export async function createTransport(store, lib = baileys) {
     status = { ...status, connected: false, state: 'connecting' };
     socket = lib.default({
       auth: auth.state, logger, markOnlineOnConnect: false, syncFullHistory: false,
-      shouldSyncHistoryMessage: () => false, emitOwnEvents: false,
+      emitOwnEvents: false,
       getMessage: async key => key.id ? await readJSON(store.path(`outgoing/${hash(key.id)}.json`), undefined) : undefined
     });
     const current = socket;
@@ -112,6 +123,10 @@ export async function createTransport(store, lib = baileys) {
       }
       });
     });
+    current.ev.on('messaging-history.set', batch => enqueue(async () => {
+      if (current !== socket || stopped || !status.connected) return;
+      await history.receive(batch, lib.normalizeMessageContent, lib.proto.HistorySync.HistorySyncType.ON_DEMAND);
+    }));
     current.ev.on('messages.upsert', batch => enqueue(async () => {
       if (current !== socket || stopped) return;
       for (const message of batch.messages) {

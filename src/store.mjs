@@ -57,6 +57,6 @@ export class Store {
       if (row.seq > after && (!chat || row.chat === chat)) rows.push(row);
     }
     rows.sort((a, b) => a.seq - b.seq);
-    return { messages: rows.slice(0, limit), nextCursor: rows.slice(0, limit).at(-1)?.seq ?? after, hasMore: rows.length > limit, coverage: 'captured-only' };
+    return { messages: rows.slice(0, limit), nextCursor: rows.slice(0, limit).at(-1)?.seq ?? after, hasMore: rows.length > limit, coverage: 'captured-only', historyCoverage: 'partial-on-request' };
   }
 }
