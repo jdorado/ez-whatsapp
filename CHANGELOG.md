@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- Link named WhatsApp accounts for distinct purposes in one registered plugin.
+  Keep existing data as default and isolate profiles, QR images, inboxes, policies,
+  source sockets and receipts. Require explicit account selection for operational
+  commands once multiple accounts exist.
+- Allow socket-only setup inspection and account-scoped private QR export.
+- Verify account boundaries and Docker crash/restart using synthetic providers;
+  live multiple-phone pairing and delivery remain unverified.
+
 ## 0.1.0-beta.15
 
 - Adopt the corrected shared publisher main-CI selection. Preserve the reviewed WhatsApp runtime and earlier immutable unpublished candidates.

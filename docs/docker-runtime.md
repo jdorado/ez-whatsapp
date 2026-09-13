@@ -64,3 +64,25 @@ the current QR privately using `ez plugins export whatsapp qr --output <new-file
 and have the owner scan with the original account. Verify `connected: true` and
 the intended identity. A different account fails closed. Never replay uncertain
 sends after repair. If no QR appears, report the actual doctor state.
+
+## Named accounts
+
+The same registered service owns all named accounts. `account-add --account NAME`
+creates durable registration in `/state/whatsapp/accounts.json` and a profile in
+`/state/whatsapp/accounts/NAME`; the original root profile is `default` and is
+not moved. Sockets and QR files use `/plugins/whatsapp/service.sock.accounts/NAME.sock` and
+`NAME.png`. All accounts share the one container lifecycle and kernel writer
+lock. The lock holder clears each account's stale JSON lock after a crash.
+
+No deployment descriptor or existing volume name changes. Older plugin versions
+ignore the additional profiles; they do not serve named accounts. Do not roll
+back while relying on named accounts or their task sources. Read `accounts` and
+account-specific `doctor` after restart. The default QR export is unchanged;
+use the account-scoped `qr` command for named PNG exports. Synthetic Docker QA
+covers multiple identities, isolated receipts and restart of named profiles;
+real multiple-number linking remains unverified.
+
+An invalid derived socket path is rejected before account registration. If one
+named profile cannot start (for example, corrupt credentials or an unsafe path),
+`accounts` reports it as unavailable with an error code; other accounts stay
+available. Investigate that profile without deleting its identity or records.

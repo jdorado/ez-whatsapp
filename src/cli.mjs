@@ -6,6 +6,9 @@ import { client } from './client.mjs';
 import { fail } from './store.mjs';
 export const help = `ez-whatsapp — standalone WhatsApp account plugin
 
+  accounts   List named accounts, purposes, identities and source sockets
+  account-add --account NAME [--purpose TEXT] (start a separate pairing session)
+  qr         Current account QR as private PNG base64 JSON
   setup      Inspect onboarding in the running Docker service; return QR or identity
   serve      Foreground socket service (captures messages; no agent execution)
   repair     Replace revoked (401) authentication; preserve pinned identity and records
@@ -19,7 +22,10 @@ export const help = `ez-whatsapp — standalone WhatsApp account plugin
   operation  --idempotency-key KEY (inspect acceptance/delivery/uncertainty)
 
 Use --profile /absolute/private/directory, or --socket /absolute/service.sock
-for client commands from another container. serve/setup require --profile.
+for client commands from another container. serve requires --profile.
+Use --account NAME for account operations; the existing profile is default.
+With multiple accounts, operational commands require --account; doctor and the
+existing event source remain bound to default when omitted.
 --json is accepted; output is always JSON. --help and --version require no profile.
 setup returns a private QR PNG: share it with the owner, who scans in WhatsApp
 Settings > Linked Devices. Poll doctor for connected=true; scanning alone is not proof.
@@ -30,16 +36,17 @@ export async function main(argv = process.argv.slice(2)) {
   process.umask(0o077);
   try {
     const { values: v, positionals } = parseArgs({ args: argv, allowPositionals: true, options: Object.fromEntries([
-      ...['profile','socket','to','text-file','idempotency-key','after','limit','chat','mode'].map(k => [k, { type: 'string' }]),
+      ...['profile','socket','to','text-file','idempotency-key','after','limit','chat','mode','account','purpose'].map(k => [k, { type: 'string' }]),
       ...['help','version','json','preview'].map(k => [k, { type: 'boolean' }])
     ]) });
     if (v.help || (!positionals.length && !v.version)) { process.stdout.write(help); return; }
     if (v.version) { process.stdout.write(JSON.parse(await readFile(new URL('../ez-plugin.json', import.meta.url), 'utf8')).version + '\n'); return; }
     if (positionals.length !== 1) throw fail('INVALID_INPUT', 'Supply one command');
     const command = positionals[0];
-    if ((!v.profile || !isAbsolute(v.profile)) && (!v.socket || !isAbsolute(v.socket) || ['serve','setup'].includes(command))) throw fail('INVALID_INPUT', 'Supply --profile with an absolute private directory');
+    if ((!v.profile || !isAbsolute(v.profile)) && (!v.socket || !isAbsolute(v.socket) || command === 'serve')) throw fail('INVALID_INPUT', 'Supply --profile with an absolute private directory');
     const profile = resolve(v.profile || '/state/whatsapp');
     if (command === 'serve') {
+      if (v.account !== undefined || v.purpose !== undefined) throw fail('INVALID_INPUT', 'serve owns all accounts; use account-add on the running service');
       if (!existsSync('/.dockerenv') && process.env.EZ_DEVELOPMENT !== '1')
         throw fail('DOCKER_REQUIRED', 'Start the registered Docker service with ez plugins start whatsapp; source development requires EZ_DEVELOPMENT=1');
       const { serve } = await import('./service.mjs');
@@ -53,11 +60,11 @@ export async function main(argv = process.argv.slice(2)) {
     }
     let result;
     if (command === 'setup') {
-      result = await client(profile, 'doctor', undefined, v.socket);
+      result = await client(profile, 'doctor', { account: v.account }, v.socket);
       result = { ...result, next: 'Scan the current QR if needed, then verify connected identity with doctor' };
     } else {
-      if (!['repair','doctor','inbox','send','verify','operation','policy','subscribe','unsubscribe'].includes(command)) throw fail('INVALID_INPUT', 'Unknown command; use --help');
-      const args = { mode: v.mode, to: v.to, key: v['idempotency-key'], preview: v.preview, after: v.after === undefined ? 0 : Number(v.after), limit: v.limit === undefined ? 20 : Number(v.limit), chat: v.chat };
+      if (!['accounts','account-add','qr','repair','doctor','inbox','send','verify','operation','policy','subscribe','unsubscribe'].includes(command)) throw fail('INVALID_INPUT', 'Unknown command; use --help');
+      const args = { account: v.account, purpose: v.purpose, mode: v.mode, to: v.to, key: v['idempotency-key'], preview: v.preview, after: v.after === undefined ? 0 : Number(v.after), limit: v.limit === undefined ? 20 : Number(v.limit), chat: v.chat };
       if (command === 'send') {
         if (!v['text-file']) throw fail('INVALID_INPUT', 'Supply --text-file');
         args.text = await readFile(v['text-file'], 'utf8');

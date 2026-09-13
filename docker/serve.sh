@@ -14,4 +14,7 @@ umask 077
   cp /app/skills/whatsapp/SKILL.md /client/skills/whatsapp/SKILL.md
 # Only the kernel lock holder may clear a stale JSON lock after a crash.
 rm -f /state/whatsapp/writer.lock
+if [ -d /state/whatsapp/accounts ]; then
+  find /state/whatsapp/accounts -mindepth 2 -maxdepth 2 -type f -name writer.lock -delete
+fi
 exec node /app/bin/ez-whatsapp.mjs "$@"

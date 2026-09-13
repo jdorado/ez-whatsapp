@@ -215,6 +215,57 @@ revocation. This adapter owns provider identity, capture and send receipts; it
 cannot grant authority. Use a task-aware main version for autonomous replies.
 Older cores continue to use existing manual commands/events. No live messaging
 is exercised by routine tests.
+### Multiple numbers and purposes
+
+One registered container can link several accounts at once. Existing data stays
+in place as `default`; adding accounts does not replace or re-pair that number.
+Use stable names that describe the owner's purpose:
+
+```sh
+ez whatsapp accounts
+ez whatsapp account-add --account sales --purpose "Sales enquiries"
+ez whatsapp setup --account sales
+ez whatsapp qr --account sales
+ez whatsapp doctor --account sales
+ez whatsapp inbox --account sales
+ez whatsapp send --account sales --to +15551234567 --text-file /absolute/mind/work/reply.txt --idempotency-key sales-reply-001 --preview
+```
+
+`account-add` starts a new pairing session; it does not send messages. `qr` returns
+private JSON containing `mimeType`, PNG `base64` and `qrCreatedAt`. Decode the PNG
+in the owning agent's workspace and deliver it privately to the owner. Poll
+`doctor --account NAME` after scanning to verify the intended identity. The
+existing `ez plugins export whatsapp qr` export remains **default-only**; never
+use it to link a named account. No account is selected globally or switched.
+
+Names are 1–32 lowercase letters, digits, `_` or `-`, starting with a letter;
+`default` is reserved. Purpose is an optional description of up to 240 characters,
+not a permission or automatic routing rule. The agent chooses the account from
+the owner's intent and must obtain any required core reply authority separately.
+
+Every account has separate authentication, pinned identity, messages, policy,
+watches, cursors, idempotency keys and receipts. The same receipt key in different
+accounts represents different operations; reconcile with the original account
+and key, never retry an uncertain send through another account. Unknown names
+fail instead of falling back. Once named accounts exist, `send`, `verify`,
+`inbox`, `operation`, `qr`, `repair` and policy commands require `--account`, even
+for `default`. `doctor` and `setup` still inspect default when omitted.
+
+`accounts` lists each account's socket. Register each named account as a separate
+core event source using that socket (for example,
+`/plugins/whatsapp/service.sock.accounts/sales.sock`). Existing root socket registrations
+remain bound to default; events are not merged. Each socket exposes the same
+message-v1 account checks and independent cursor. Binding a new source grants
+no reply authority. Do not reuse another account's source cursor or task grant.
+
+All accounts restart with the registered plugin. Profiles remain in its private
+volume (`accounts/NAME` for named accounts); sockets and separate QR files live
+in the existing IPC volume. No extra deployment, Docker volume, daemon or core
+routing code is needed. Removing an account or changing its linked number is
+not provided by these commands; preserve its data and identity.
+Multi-account tests use synthetic providers; simultaneous live-phone pairing
+and delivery have not been verified.
+
 ### Linking compatibility
 
 The transport uses Baileys’ default browser identity. The browser name is part
