@@ -268,6 +268,20 @@ and delivery have not been verified.
 
 ### Linking compatibility
 
+Unlinked pairing sessions stop on expiry or connection failure (`needs-link`);
+`setup --account NAME` starts a new attempt when the owner is ready. It does not
+reset credentials or re-pair connected accounts. Linked sessions retain their
+normal reconnect behavior; the provider's pre-link 515 restart is bounded to
+three attempts. This removes unattended QR negotiation loops.
+
+
+Keep Baileys' native registration and initial history synchronization defaults,
+matching the ordinary bridge setup. Disabling `syncFullHistory` changes the
+pairing device properties; suppressing every `shouldSyncHistoryMessage` type
+prevents the initial identity mappings the provider needs. The plugin still
+stores only its captured message events, not a full history backup.
+
+
 QR rotation uses Baileys' defaults: about 60 seconds for the first code and
 20 seconds for replacements. `doctor` and `qr` expose creation time and the
 remaining rotation window; it is not a guarantee of phone acceptance. Send a

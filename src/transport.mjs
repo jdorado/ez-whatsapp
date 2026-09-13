@@ -10,7 +10,7 @@ export async function createTransport(store, lib = baileys) {
   let auth = await authState(store.dir, lib);
   await privateDir(store.path('outgoing'));
   const logger = pino({ level: 'silent' });
-  let socket, timer, stopped = false, attempts = 0;
+  let socket, timer, stopped = false, attempts = 0, pairingRestarts = 0;
   let status = { connected: false, state: 'starting', account: null, qrPath: null };
   let events = Promise.resolve();
   const qrPath = store.qrPath || process.env.EZ_WHATSAPP_QR_PATH || store.path('pairing.png');
@@ -22,6 +22,14 @@ export async function createTransport(store, lib = baileys) {
     status: () => ({ ...status, ...(status.qrPath ? { qrAgeMs: Date.now() - Date.parse(status.qrCreatedAt), qrRemainingMs: Math.max(0, Date.parse(status.qrCreatedAt) + status.qrRefreshAfterMs - Date.now()) } : {}) }),
     async start() { await removeQR(); connect(); },
     async close() { stopped = true; clearTimeout(timer); socket?.end(undefined); await events; await auth.flush(); await removeQR(); },
+    async setup() {
+      await events;
+      if (!stopped && status.state === 'needs-link' && !auth.state.creds.me) {
+        attempts = 0; pairingRestarts = 0;
+        connect();
+      }
+      return api.status();
+    },
     async repair() {
       await events;
       if (stopped || status.connected || status.state !== 'needs-attention' || status.disconnectCode !== lib.DisconnectReason.loggedOut)
@@ -37,7 +45,7 @@ export async function createTransport(store, lib = baileys) {
         await removeQR();
         auth = await authState(store.dir, lib, true);
         await auth.save();
-        attempts = 0;
+        attempts = 0; pairingRestarts = 0;
         connect();
         return api.status();
       } catch (error) { fatal(); throw error; }
@@ -68,8 +76,7 @@ export async function createTransport(store, lib = baileys) {
     if (stopped) return;
     status = { ...status, connected: false, state: 'connecting' };
     socket = lib.default({
-      auth: auth.state, logger, markOnlineOnConnect: false, syncFullHistory: false,
-      shouldSyncHistoryMessage: () => false, emitOwnEvents: false,
+      auth: auth.state, logger, markOnlineOnConnect: false, emitOwnEvents: false,
       getMessage: async key => key.id ? await readJSON(store.path(`outgoing/${hash(key.id)}.json`), undefined) : undefined
     });
     const current = socket;
@@ -103,8 +110,13 @@ export async function createTransport(store, lib = baileys) {
         await removeQR();
         const code = update.lastDisconnect?.error?.output?.statusCode;
         const terminal = [lib.DisconnectReason.loggedOut, lib.DisconnectReason.badSession, lib.DisconnectReason.connectionReplaced, lib.DisconnectReason.forbidden].includes(code);
-        status = { ...status, connected: false, state: terminal ? 'needs-attention' : 'reconnecting', disconnectCode: code ?? null };
-        if (!terminal) {
+        // Unlinked QR sessions stop on expiry/failure, as in the legacy bridge.
+        // Only a successful pairing's bounded 515 restart may continue before me exists.
+        const paired = Boolean(auth.state.creds.me);
+        const pairingRestart = code === lib.DisconnectReason.restartRequired && ++pairingRestarts <= 3;
+        const reconnect = !terminal && (paired || pairingRestart);
+        status = { ...status, connected: false, state: terminal ? 'needs-attention' : reconnect ? 'reconnecting' : 'needs-link', disconnectCode: code ?? null };
+        if (reconnect) {
           // Transport lifecycle only; never retries a user operation or chooses a fallback tool.
           const delay = code === lib.DisconnectReason.restartRequired ? 0 : Math.min(30000, 1000 * 2 ** Math.min(attempts++, 5));
           timer = setTimeout(connect, delay);

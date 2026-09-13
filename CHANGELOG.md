@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Stop retrying expired unlinked QR sessions indefinitely. Explicit setup starts
+  the next attempt, preserving credentials; linked accounts still reconnect.
+
+- Restore native full-sync registration and initial identity synchronization.
+  Remove the overrides that changed the registration payload from a plain
+  Baileys bridge and suppressed all initial history mappings. Compare the full
+  encoded registration payload in regression tests; live linking remains a QA gate.
+
 - Remove the forced 60-second QR rotation override. Keep Baileys' first-QR and
   replacement-QR timing, report remaining time, and reject expired QR exports.
   Previously, a replacement QR could still be offered after the provider's

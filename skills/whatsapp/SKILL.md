@@ -37,6 +37,13 @@ account's existing identity and requires its revoked 401 state.
 
 ## QR freshness
 
+Unlinked pairing stops when its provider session expires (`needs-link`). Run
+`ez whatsapp setup --account NAME` to begin the next explicit attempt when the
+owner is ready. Setup preserves credentials and connected accounts; do not use
+repeated container restarts to obtain codes. Doctor is read-only and does not
+start or extend a pairing session. Existing linked accounts still reconnect.
+
+
 Baileys rotates the first QR after about 60 seconds and replacements after about
 20 seconds. Never assume every QR lasts a minute. Inspect `doctor --account NAME`
 for `qrCreatedAt`, `qrRefreshAfterMs` and `qrRemainingMs`. If the current code has
