@@ -14,6 +14,8 @@ export const help = `ez-whatsapp — standalone WhatsApp account plugin
   repair     Replace revoked (401) authentication; preserve pinned identity and records
   doctor     Live connection identity, QR image path, capabilities
   inbox      Captured messages: --after CURSOR --limit 1..100 [--chat JID]
+  history    Request older messages: --chat JID --before CAPTURED_SEQ --limit 1..50
+  history-status Latest request for this account (partial coverage; no automatic retry)
   policy     Read wake policy, or set --mode manual|selected|all
   subscribe  Watch new incoming messages in --chat JID
   unsubscribe Stop watching --chat JID (capture continues)
@@ -36,7 +38,7 @@ export async function main(argv = process.argv.slice(2)) {
   process.umask(0o077);
   try {
     const { values: v, positionals } = parseArgs({ args: argv, allowPositionals: true, options: Object.fromEntries([
-      ...['profile','socket','to','text-file','idempotency-key','after','limit','chat','mode','account','purpose'].map(k => [k, { type: 'string' }]),
+      ...['profile','socket','to','text-file','idempotency-key','after','before','limit','chat','mode','account','purpose'].map(k => [k, { type: 'string' }]),
       ...['help','version','json','preview'].map(k => [k, { type: 'boolean' }])
     ]) });
     if (v.help || (!positionals.length && !v.version)) { process.stdout.write(help); return; }
@@ -63,8 +65,9 @@ export async function main(argv = process.argv.slice(2)) {
       result = await client(profile, 'doctor', { account: v.account }, v.socket);
       result = { ...result, next: 'Scan the current QR if needed, then verify connected identity with doctor' };
     } else {
-      if (!['accounts','account-add','qr','repair','doctor','inbox','send','verify','operation','policy','subscribe','unsubscribe'].includes(command)) throw fail('INVALID_INPUT', 'Unknown command; use --help');
+      if (!['accounts','account-add','qr','repair','doctor','inbox','history','history-status','send','verify','operation','policy','subscribe','unsubscribe'].includes(command)) throw fail('INVALID_INPUT', 'Unknown command; use --help');
       const args = { account: v.account, purpose: v.purpose, mode: v.mode, to: v.to, key: v['idempotency-key'], preview: v.preview, after: v.after === undefined ? 0 : Number(v.after), limit: v.limit === undefined ? 20 : Number(v.limit), chat: v.chat };
+      if (v.before !== undefined) args.before = Number(v.before);
       if (command === 'send') {
         if (!v['text-file']) throw fail('INVALID_INPUT', 'Supply --text-file');
         args.text = await readFile(v['text-file'], 'utf8');

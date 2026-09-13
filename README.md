@@ -96,10 +96,47 @@ provider guarantee or automatic uncertain-send retry.
 processing. It includes incoming and observed outgoing messages (`fromMe`), chat
 JID, participant, text/caption, content type and source. LIDs remain opaque.
 Media metadata is captured, but attachments are not downloaded or transcribed.
-History coverage is **captured-only**, not a full WhatsApp backup. No auto-replies,
+Coverage includes captured messages and explicitly requested partial history,
+not a full WhatsApp backup. No auto-replies,
 read-receipt sending or reactions. The service captures messages;
 subscription policy controls which new messages may wake a registered host. No content becomes an instruction
 or grants the sender authority. Status/broadcast traffic is ignored.
+
+### Request older messages
+
+Use an explicit owner request for the chosen account and chat. Read `inbox` for
+that exact chat and use a message's `seq` as the boundary:
+
+```sh
+ez whatsapp inbox --account work --chat 15551234567@s.whatsapp.net
+ez whatsapp history --account work --chat 15551234567@s.whatsapp.net --before 42 --limit 20
+ez whatsapp history-status --account work
+ez whatsapp inbox --account work --chat 15551234567@s.whatsapp.net --after 42
+```
+
+Replace 42 with the captured message's actual sequence. Each request uses the
+provider's native `fetchMessageHistory` for 1–50 older messages. A captured anchor
+with a timestamp is required; this cannot discover or export unknown chats.
+Choose an older returned message as the next boundary only when more is requested.
+Inbox pagination remains capture order, not chronological order; historical rows
+have `source: "history"` and their original provider timestamp.
+
+`requested` means submission returned a provider session ID, `received` means a
+matching response arrived (possibly with zero new messages), `expired` means no
+response arrived within two minutes, and `uncertain` means submission could not
+be confirmed. Status describes the latest request for that account. One request
+is allowed per two-minute response window; there is no background retry or
+automatic pagination. WhatsApp may return less than requested or nothing.
+
+Only matching on-demand responses for the requested exact chat are persisted,
+up to the requested limit. Unsolicited initial history is not added to the inbox;
+Baileys may still process sync data for internal identity mappings. Requested
+history is stored in the account's existing private profile and never wakes an
+agent or changes monitoring/reply authority. Attachments are not downloaded.
+The legacy `coverage: "captured-only"` field means locally stored records;
+`historyCoverage: "partial-on-request"` makes backfill limitations explicit.
+Provider response availability requires live account QA; synthetic tests do not
+establish completeness or successful retrieval from a real phone.
 
 ## Register with an agent
 
