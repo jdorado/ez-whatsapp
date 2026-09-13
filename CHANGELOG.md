@@ -10,6 +10,12 @@
   Baileys bridge and suppressed all initial history mappings. Compare the full
   encoded registration payload in regression tests; live linking remains a QA gate.
 
+- Add explicit account/chat-scoped `history` requests using a captured message
+  boundary, plus `history-status`. Persist only matching bounded on-demand
+  responses without agent wakeups; preserve partial coverage and uncertainty.
+  Remove the blanket history-sync rejection so native identity mapping and
+  requested responses can be processed. Live phone history retrieval is unverified.
+
 - Remove the forced 60-second QR rotation override. Keep Baileys' first-QR and
   replacement-QR timing, report remaining time, and reject expired QR exports.
   Previously, a replacement QR could still be offered after the provider's
