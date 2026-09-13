@@ -10,6 +10,31 @@ Use only this agent's bound `ez` registry. Inspect `ez plugins list` and
 Do not create a standalone launcher/deployment, install another copy, select a
 profile from another agent or infer installation from an available catalog item.
 
+## Multiple accounts
+
+Use `ez whatsapp accounts` to see names, purposes, linked identities and source
+sockets. Keep the existing account as `default`. When the owner asks for another
+number, run `ez whatsapp account-add --account NAME --purpose "DESCRIPTION"`.
+Choose a short stable purpose name, then use `--account NAME` explicitly on every
+provider command. Never switch a shared active account, replace default, or
+create another deployment. A purpose label is not send/reply authority.
+
+For named pairing, `ez whatsapp qr --account NAME` returns private PNG base64
+JSON. Decode its `data.base64` in the owning workspace using an available runtime,
+deliver the actual image privately, then remove the temporary image. The generic
+`ez plugins export whatsapp qr` export is default-only. Verify the intended phone
+identity with `ez whatsapp doctor --account NAME`; do not confuse one account's
+QR or successful connection with another's. `setup --account NAME` inspects the
+same account over the registered socket without private-profile access.
+
+Use the socket returned by `accounts` to register an independent core event
+source per account. Keep its cursor and core-approved tasks bound to that source
+and identity. Root event-source operations remain default-only; they do not
+combine named inboxes. Account credentials, policy, watches and receipt keys are
+isolated. Reconcile uncertain operations on their original account and key;
+never resend through a different account. `repair --account NAME` retains that
+account's existing identity and requires its revoked 401 state.
+
 ## Onboarding
 
 For Ez, begin only after the main agent has paired its owner and produced a

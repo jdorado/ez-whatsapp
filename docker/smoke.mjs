@@ -25,14 +25,22 @@ try {
   ok(['exec',id,'sh','-c','printf "%s" "literal text" > /tmp/text.txt']);
   const send=JSON.parse(ok(['exec',id,'node','/app/bin/ez-whatsapp.mjs','send','--socket','/plugins/whatsapp/service.sock','--to','+15551230000','--text-file','/tmp/text.txt','--idempotency-key','docker:qa'])).data;
   assert.equal(send.state,'accepted');
+  const added=call(['account-add','--account','sales','--purpose','Sales enquiries']);
+  assert.equal(added.account.jid,'15551230001@s.whatsapp.net');
+  assert.equal(call(['doctor','--account','sales']).connected,true);
+  const namedSend=JSON.parse(ok(['exec',id,'node','/app/bin/ez-whatsapp.mjs','send','--socket','/plugins/whatsapp/service.sock','--account','sales','--to','+15551230000','--text-file','/tmp/text.txt','--idempotency-key','docker:qa'])).data;
+  assert.notEqual(namedSend.providerMessageId,send.providerMessageId);
   const duplicate=docker(['run','--rm',...mounts,...fixture,image]);
   assert.equal(duplicate.status,73,duplicate.stderr);
   ok(['kill',id]);ok(['start',id]);await ready();
-  assert.equal(call(['inbox']).nextCursor,first.nextCursor);
-  assert.equal(call(['operation','--idempotency-key','docker:qa']).providerMessageId,send.providerMessageId);
+  assert.equal(call(['inbox','--account','default']).nextCursor,first.nextCursor);
+  assert.equal(call(['operation','--account','default','--idempotency-key','docker:qa']).providerMessageId,send.providerMessageId);
+  assert.equal(call(['operation','--account','sales','--idempotency-key','docker:qa']).providerMessageId,namedSend.providerMessageId);
+  assert.equal(call(['accounts']).accounts.find(a=>a.name==='sales').purpose,'Sales enquiries');
+  assert.equal(call(['doctor','--account','sales']).connected,true);
   const isolated=ok(['run','--rm','--user','1000:1000','-v',`${volumes[1]}:/plugins/whatsapp:ro`,'-v',`${volumes[2]}:/client:ro`,'--entrypoint','node','node:22.22.0-bookworm-slim','-e',`const fs=require('fs');if(fs.existsSync('/state/whatsapp')||fs.existsSync('/var/run/docker.sock'))process.exit(1);console.log('isolated')`]);
   assert.equal(isolated,'isolated');
-  console.log('Docker smoke passed: separate client/socket, synthetic send receipt, duplicate writer rejected, SIGKILL restart, durable cursor and operation, private profile absent from client. No provider calls.');
+  console.log('Docker smoke passed: separate client/socket, synthetic send receipt, duplicate writer rejected, SIGKILL restart, durable per-account cursors and operations, named account restart, private profile absent from client. No provider calls.');
 } finally {
   docker(['rm','-f',id]);for(const volume of volumes)docker(['volume','rm',volume]);
 }

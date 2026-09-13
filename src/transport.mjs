@@ -13,7 +13,7 @@ export async function createTransport(store, lib = baileys) {
   let socket, timer, stopped = false, attempts = 0;
   let status = { connected: false, state: 'starting', account: null, qrPath: null };
   let events = Promise.resolve();
-  const qrPath = process.env.EZ_WHATSAPP_QR_PATH || store.path('pairing.png');
+  const qrPath = store.qrPath || process.env.EZ_WHATSAPP_QR_PATH || store.path('pairing.png');
   const removeQR = async () => { await unlink(qrPath).catch(e => { if (e.code !== 'ENOENT') throw e; }); status.qrPath = null; };
   const fatal = () => { status = { ...status, connected: false, state: 'storage-error' }; stopped = true; clearTimeout(timer); socket?.end(new Error('Storage failure')); };
   const enqueue = fn => { events = events.then(fn).catch(fatal); };
