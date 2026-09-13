@@ -9,7 +9,7 @@ export const help = `ez-whatsapp — standalone WhatsApp account plugin
   accounts   List named accounts, purposes, identities and source sockets
   account-add --account NAME [--purpose TEXT] (start a separate pairing session)
   qr         Current account QR as private PNG base64 JSON
-  setup      Inspect onboarding in the running Docker service; return QR or identity
+  setup      Start an expired unlinked pairing attempt, or inspect the current one
   serve      Foreground socket service (captures messages; no agent execution)
   repair     Replace revoked (401) authentication; preserve pinned identity and records
   doctor     Live connection identity, QR image path, capabilities
@@ -62,7 +62,7 @@ export async function main(argv = process.argv.slice(2)) {
     }
     let result;
     if (command === 'setup') {
-      result = await client(profile, 'doctor', { account: v.account }, v.socket);
+      result = await client(profile, 'setup', { account: v.account }, v.socket);
       result = { ...result, next: 'Scan the current QR if needed, then verify connected identity with doctor' };
     } else {
       if (!['accounts','account-add','qr','repair','doctor','inbox','history','history-status','send','verify','operation','policy','subscribe','unsubscribe'].includes(command)) throw fail('INVALID_INPUT', 'Unknown command; use --help');

@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Stop retrying expired unlinked QR sessions indefinitely. Explicit setup starts
+  the next attempt, preserving credentials; linked accounts still reconnect.
+
+- Restore native full-sync registration and initial identity synchronization.
+  Remove the overrides that changed the registration payload from a plain
+  Baileys bridge and suppressed all initial history mappings. Compare the full
+  encoded registration payload in regression tests; live linking remains a QA gate.
+
 - Add explicit account/chat-scoped `history` requests using a captured message
   boundary, plus `history-status`. Persist only matching bounded on-demand
   responses without agent wakeups; preserve partial coverage and uncertainty.

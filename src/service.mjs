@@ -18,6 +18,7 @@ export class Service {
       if (current.qrPath !== status.qrPath || current.qrCreatedAt !== status.qrCreatedAt || current.qrRemainingMs === 0) throw fail('QR_UNAVAILABLE', 'QR changed; request the current QR again');
       return { mimeType: 'image/png', base64: png.toString('base64'), qrCreatedAt: status.qrCreatedAt, qrRefreshAfterMs: status.qrRefreshAfterMs, qrRemainingMs: current.qrRemainingMs };
     }
+    if (command === 'setup') { await this.transport.setup?.(); return this.call('doctor'); }
     if (command === 'repair') return this.transport.repair();
     if (command === 'history') return this.transport.historyRequest(args);
     if (command === 'history-status') return this.transport.historyStatus();

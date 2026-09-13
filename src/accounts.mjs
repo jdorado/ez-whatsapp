@@ -61,7 +61,7 @@ export class Accounts {
     if (!validName(name)) throw fail('INVALID_INPUT', 'Invalid account name');
     // Existing source registrations stay bound to default. Named sources use their
     // own sockets, so cursors and core-approved account IDs never change meaning.
-    if (args.account === undefined && this.entries.length && command !== 'doctor' && !sourceCommands.has(command))
+    if (args.account === undefined && this.entries.length && !['doctor', 'setup'].includes(command) && !sourceCommands.has(command))
       throw fail('ACCOUNT_REQUIRED', 'Multiple accounts are configured; supply --account (including default)');
     const service = name === 'default' ? this.service : this.running.get(name)?.service;
     if (!service) throw fail('ACCOUNT_NOT_FOUND', 'Account is not running; inspect accounts or restart the registered plugin');

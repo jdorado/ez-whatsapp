@@ -136,6 +136,15 @@ test('provider events create private QR, pin identity, capture messages and reje
   await until(() => transport.status().qrPath);
   assert.equal((await stat(transport.status().qrPath)).mode & 0o777, 0o600);
   assert.equal(config.markOnlineOnConnect, false);
+  // Match the legacy bridge's registration payload, not only its browser label.
+  // Suppressing full sync changes devicePairingData.deviceProps in the handshake.
+  const actualConfig = { ...lib.DEFAULT_CONNECTION_CONFIG, ...config };
+  const encodeRegistration = options => Buffer.from(lib.proto.ClientPayload.encode(
+    lib.generateRegistrationNode(config.auth.creds, options)).finish());
+  assert.deepEqual(encodeRegistration(actualConfig), encodeRegistration(lib.DEFAULT_CONNECTION_CONFIG));
+  assert.equal(Object.hasOwn(config, 'syncFullHistory'), false);
+  assert.equal(Object.hasOwn(config, 'shouldSyncHistoryMessage'), false);
+
   assert.equal(Object.hasOwn(config, 'qrTimeout'), false, 'Keep provider-native QR rotation');
   assert.equal(transport.status().qrRefreshAfterMs, 60000);
   assert.ok(transport.status().qrRemainingMs > 0 && transport.status().qrRemainingMs <= 60000);
@@ -333,4 +342,38 @@ test('repair replaces only revoked auth, excludes concurrent resets and stale so
   await until(() => transport.status().state === 'account-mismatch');
   assert.deepEqual(await snapshot(), before);
   await assert.rejects(service.call('repair'), { code: 'REPAIR_NOT_ALLOWED' });
+});
+
+test('unlinked failure stops until explicit setup; connected auth retains reconnect and 515 is bounded', async t => {
+  const f = await fixture(t);
+  const { EventEmitter } = await import('node:events');
+  const lib = await import('@whiskeysockets/baileys');
+  const { createTransport } = await import('../src/transport.mjs');
+  const sockets = [], configs = [];
+  const provider = { ...lib, default: config => {
+    configs.push(config);
+    const s = { ev: new EventEmitter(), end() {} }; sockets.push(s); return s;
+  } };
+  const transport = await createTransport(f.store, provider);
+  t.after(() => transport.close());
+  await transport.start();
+  const until = async fn => {
+    for (let n = 0; n < 200; n++) { if (fn()) return; await new Promise(r => setTimeout(r, 5)); }
+    assert.fail('Expected transition');
+  };
+  const close = code => sockets.at(-1).ev.emit('connection.update', { connection: 'close', lastDisconnect: { error: { output: { statusCode: code } } } });
+  close(408); await until(() => transport.status().state === 'needs-link');
+  await new Promise(r => setTimeout(r, 1100));
+  assert.equal(sockets.length, 1, 'No automatic new QR attempt');
+  await Promise.all([transport.setup(), transport.setup()]);
+  assert.equal(sockets.length, 2, 'Concurrent setup opens one new socket');
+  for (let n = 0; n < 3; n++) { const count = sockets.length; close(515); await until(() => sockets.length === count + 1); }
+  close(515); await until(() => transport.status().state === 'needs-link');
+  await transport.setup();
+  configs.at(-1).auth.creds.me = { id: '15551230000@s.whatsapp.net' };
+  close(408); await until(() => transport.status().state === 'reconnecting');
+  const count = sockets.length; await until(() => sockets.length === count + 1);
+  close(401); await until(() => transport.status().state === 'needs-attention');
+  const terminalCount = sockets.length; await transport.setup();
+  assert.equal(sockets.length, terminalCount, 'Setup does not bypass revoked authentication repair');
 });
