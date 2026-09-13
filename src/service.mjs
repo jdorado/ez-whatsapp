@@ -12,11 +12,11 @@ export class Service {
   async call(command, args = {}) {
     if (command === 'qr') {
       const status = this.transport.status();
-      if (status.connected || !status.qrPath) throw fail('QR_UNAVAILABLE', 'No current QR; inspect doctor for this account');
+      if (status.connected || !status.qrPath || status.qrRemainingMs === 0) throw fail('QR_UNAVAILABLE', 'No current QR; inspect doctor for this account');
       const png = await readFile(status.qrPath);
       const current = this.transport.status();
-      if (current.qrPath !== status.qrPath || current.qrCreatedAt !== status.qrCreatedAt) throw fail('QR_UNAVAILABLE', 'QR changed; request the current QR again');
-      return { mimeType: 'image/png', base64: png.toString('base64'), qrCreatedAt: status.qrCreatedAt };
+      if (current.qrPath !== status.qrPath || current.qrCreatedAt !== status.qrCreatedAt || current.qrRemainingMs === 0) throw fail('QR_UNAVAILABLE', 'QR changed; request the current QR again');
+      return { mimeType: 'image/png', base64: png.toString('base64'), qrCreatedAt: status.qrCreatedAt, qrRefreshAfterMs: status.qrRefreshAfterMs, qrRemainingMs: current.qrRemainingMs };
     }
     if (command === 'repair') return this.transport.repair();
     if (command === 'doctor') return { ...this.transport.status(), profile: this.store.dir, capabilities: ['send-text', 'read-captured-messages'], eventSource: true, wakePolicy: await this.policy.get(), hostDispatchRequired: true };

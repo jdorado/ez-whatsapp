@@ -97,6 +97,8 @@ test('separate CLI selects account and returns its QR without profile access', a
   f.transports.get('sales').setStatus({ connected: false, qrPath, qrCreatedAt: '2026-09-13T00:00:00Z' });
   const qr = await run(['qr', '--account', 'sales']);
   assert.equal(Buffer.from(qr.base64, 'base64').toString(), 'synthetic-png');
+  f.transports.get('sales').setStatus({ qrRemainingMs: 0 });
+  await assert.rejects(f.call('qr', { account: 'sales' }), { code: 'QR_UNAVAILABLE' });
   await assert.rejects(run(['qr', '--account', 'default']));
   assert.deepEqual(await run(['repair', '--account', 'sales']), { repaired: 'sales' });
 });

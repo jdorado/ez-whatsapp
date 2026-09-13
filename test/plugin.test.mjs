@@ -136,6 +136,30 @@ test('provider events create private QR, pin identity, capture messages and reje
   await until(() => transport.status().qrPath);
   assert.equal((await stat(transport.status().qrPath)).mode & 0o777, 0o600);
   assert.equal(config.markOnlineOnConnect, false);
+  assert.equal(Object.hasOwn(config, 'qrTimeout'), false, 'Keep provider-native QR rotation');
+  assert.equal(transport.status().qrRefreshAfterMs, 60000);
+  assert.ok(transport.status().qrRemainingMs > 0 && transport.status().qrRemainingMs <= 60000);
+  const firstQrTime = transport.status().qrCreatedAt;
+  await new Promise(r => setTimeout(r, 5));
+  socket.ev.emit('connection.update', { qr: 'second-synthetic-pairing' });
+  await until(() => transport.status().qrCreatedAt !== firstQrTime);
+  assert.equal(transport.status().qrRefreshAfterMs, 20000);
+  assert.ok(transport.status().qrRemainingMs > 0 && transport.status().qrRemainingMs <= 20000);
+  // Auth/message persistence must not extend provider QR validity.
+  const originalIngest = f.store.ingest.bind(f.store);
+  let releaseIngest, enteredIngest;
+  const entered = new Promise(resolve => { enteredIngest = resolve; });
+  f.store.ingest = async () => { enteredIngest(); await new Promise(resolve => { releaseIngest = resolve; }); };
+  socket.ev.emit('messages.upsert', { type: 'notify', messages: [{ key: { id: 'blocking', remoteJid: '15551234567@s.whatsapp.net' }, message: { conversation: 'fixture' } }] });
+  await entered;
+  const beforeReceipt = Date.now();
+  socket.ev.emit('connection.update', { qr: 'queued-replacement' });
+  const afterReceipt = Date.now();
+  await new Promise(r => setTimeout(r, 25));
+  releaseIngest();
+  await until(() => Date.parse(transport.status().qrCreatedAt) >= beforeReceipt);
+  assert.ok(Date.parse(transport.status().qrCreatedAt) <= afterReceipt, 'Timestamp is provider receipt, not queue completion');
+  f.store.ingest = originalIngest;
   // The browser name is protocol data: custom branding becomes OTHER_WEB_CLIENT
   // in the QR, unlike the supported default used by a plain Baileys socket.
   const browser = { ...lib.DEFAULT_CONNECTION_CONFIG, ...config }.browser;
