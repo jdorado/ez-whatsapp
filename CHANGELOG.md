@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.0-beta.16
 
 - Stop retrying expired unlinked QR sessions indefinitely. Explicit setup starts
   the next attempt, preserving credentials; linked accounts still reconnect.
