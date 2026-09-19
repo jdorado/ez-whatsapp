@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.0-beta.17
+
+- Correct the current beta version in the README and release guide, carrying
+  forward beta.16 provider behavior and explicit command exposure unchanged.
+
 ## 0.1.0-beta.16
 
 - Stop retrying expired unlinked QR sessions indefinitely. Explicit setup starts

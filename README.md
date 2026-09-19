@@ -1,12 +1,12 @@
 # ez-whatsapp
 
-**Beta 0.1.0-beta.14 — for testing on a trusted machine.** Offline and Docker
+**Beta 0.1.0-beta.17 — for testing on a trusted machine.** Offline and Docker
 fixtures are verified. Live account onboarding and reboot acceptance for this
 release are deferred; this is not a production-readiness claim.
 
 The npm package is `@jc_stack/ez-whatsapp` (prerelease, published to `latest`). Download a pinned
-release with `npm pack @jc_stack/ez-whatsapp@0.1.0-beta.14`, or get the tarball and SHA256SUMS from
-[GitHub prereleases](https://github.com/jdorado/ez-whatsapp/releases/tag/v0.1.0-beta.14).
+release with `npm pack @jc_stack/ez-whatsapp@0.1.0-beta.17`, or get the tarball and SHA256SUMS from
+[GitHub prereleases](https://github.com/jdorado/ez-whatsapp/releases/tag/v0.1.0-beta.17).
 GitHub remains under `jdorado`; npm uses `jc_stack`. Do not install the unrelated
 unscoped `ez-whatsapp` package.
 
@@ -37,9 +37,9 @@ workflow.
 Fetch the pinned source tarball and extract it into a permanent package directory:
 
 ```sh
-npm pack @jc_stack/ez-whatsapp@0.1.0-beta.14
+npm pack @jc_stack/ez-whatsapp@0.1.0-beta.17
 mkdir -p /absolute/whatsapp-package
-tar -xzf jc_stack-ez-whatsapp-0.1.0-beta.14.tgz -C /absolute/whatsapp-package
+tar -xzf jc_stack-ez-whatsapp-0.1.0-beta.17.tgz -C /absolute/whatsapp-package
 ```
 
 Add that extracted source to the owning agent's reviewed local catalog (the
