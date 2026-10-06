@@ -12,7 +12,7 @@ import { atomic, fail, readJSON, writeJSON, privateDir, hash } from './store.mjs
 export async function createTransport(store, lib = baileys, options = {}) {
   const documents = new Documents(store, lib);
   await documents.init();
-  const history = new History(store, async (message, row) => documents.capture(message, row, () => !stopped && status.connected));
+  const history = new History(store, async (message, row) => documents.capture(message, row, () => !stopped && status.connected, true));
   const audio = new Audio(store, lib, options.fetch);
   await audio.init();
   let auth = await authState(store.dir, lib);

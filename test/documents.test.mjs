@@ -53,3 +53,12 @@ test('explicit provider history recovers original document bytes without rewriti
  assert.equal((await f.store.messages()).messages.length,1);
  await f.docs.replay(chat,1); assert.equal((await f.policy.events(1)).events.length,1);
 });
+
+test('explicit history recovery and replay use current attention without broadening ordinary old-message capture',async t=>{
+ const f=await fixture(t); const old={...f.row,timestamp:1};await f.store.ingest(old);
+ assert.equal((await f.docs.capture(f.message,old)).document,undefined);
+ const recovered=await f.docs.capture(f.message,await f.store.readMessage(old),()=>true,true);await f.store.updateMessage(recovered);
+ assert.equal(recovered.document.state,'available');
+ const replay=await f.docs.replay(chat,1);assert.equal((await f.policy.events(1)).events[0].id,String(replay.replay.seq));
+ await f.policy.unwatch(chat); await assert.rejects(f.docs.replay(chat,1));
+});
