@@ -1,3 +1,4 @@
+import { downloadMedia } from './media.mjs';
 import { Policy } from './policy.mjs';
 import { atomic, fail, hash, privateDir, readJSON, writeJSON } from './store.mjs';
 
@@ -55,31 +56,11 @@ export class Audio {
     if ((length !== null && (!Number.isSafeInteger(length) || length < 0 || length > maxAudioBytes)) ||
         (audio.seconds != null && (!Number.isFinite(Number(audio.seconds)) || Number(audio.seconds) < 0 || Number(audio.seconds) > maxSeconds)))
       return { ...row, transcription: { state: 'failed', code: 'AUDIO_TOO_LARGE' } };
-    // Baileys honors the host in provider metadata. Reject arbitrary URLs before
-    // downloading; neither correspondence nor CLI input can select an endpoint.
-    try {
-      if (audio.url) {
-        const url = new URL(audio.url);
-        if (url.protocol !== 'https:' || url.username || url.password || url.port ||
-            !/(^|\.)whatsapp\.(net|com)$/.test(url.hostname)) throw new Error();
-      }
-      if (audio.directPath && (!audio.directPath.startsWith('/') || audio.directPath.startsWith('//') || /[\r\n]/.test(audio.directPath))) throw new Error();
-      if (!audio.url && !audio.directPath) throw new Error();
-    } catch { return { ...row, transcription: { state: 'failed', code: 'AUDIO_SOURCE_INVALID' } }; }
-    let bytes, stream;
-    try {
-      stream = await this.lib.downloadContentFromMessage(audio, 'audio', { options: { signal: AbortSignal.timeout(20000), redirect: 'error' } });
-      const chunks = []; let size = 0;
-      for await (const chunk of stream) {
-        size += chunk.length;
-        if (size > maxAudioBytes) throw fail('AUDIO_TOO_LARGE', 'Audio exceeds the download limit');
-        chunks.push(chunk);
-      }
-      if (!size) throw fail('AUDIO_EMPTY', 'Audio is empty');
-      bytes = Buffer.concat(chunks);
-    } catch (error) {
-      return { ...row, transcription: { state: 'failed', code: error.code === 'AUDIO_TOO_LARGE' ? error.code : 'AUDIO_DOWNLOAD_FAILED' } };
-    } finally { stream?.destroy(); }
+    let bytes;
+    try { bytes = await downloadMedia(this.lib, audio, 'audio', maxAudioBytes); }
+    catch (error) {
+      return { ...row, transcription: { state: 'failed', code: error.code === 'MEDIA_SOURCE_INVALID' ? 'AUDIO_SOURCE_INVALID' : error.code === 'MEDIA_TOO_LARGE' ? 'AUDIO_TOO_LARGE' : 'AUDIO_DOWNLOAD_FAILED' } };
+    }
     if (!stillCurrent() || !await this.target(row)) return row;
     await privateDir(this.store.path('audio'));
     const source = { sha256: hash(bytes), bytes: bytes.length, mimeType };

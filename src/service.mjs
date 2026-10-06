@@ -47,6 +47,18 @@ export class Service {
       if (op.account?.jid !== args.accountId) throw fail('ACCOUNT_MISMATCH', 'Operation belongs to another account');
       return { accountId: args.accountId, conversationId: op.to, key: op.key, state: ['accepted', 'delivered', 'read'].includes(op.state) ? 'accepted' : 'uncertain', receiptId: op.providerMessageId };
     }
+    if (command === 'document-replay') return this.transport.documentReplay(recipient(args.chat), args.seq);
+    if (command === 'task-document') {
+      this.checkTaskAccount(args.accountId);
+      const checked = await this.policy.check([args.incomingId]);
+      if (checked.events.length !== 1 || checked.events[0].conversationId !== args.conversationId) throw fail('NOT_FOUND', 'Document is outside task correspondence');
+      const row = (await this.store.messages(Number(args.incomingId) - 1, 1)).messages[0];
+      const result = await this.transport.documentRead(row);
+      this.checkTaskAccount(args.accountId);
+      const current = await this.policy.check([args.incomingId]);
+      if (current.events[0]?.conversationId !== args.conversationId) throw fail('NOT_FOUND', 'Document permission changed');
+      return result;
+    }
     if (command === 'events') return this.policy.events(args.after);
     if (command === 'events-check') return this.policy.check(args.ids);
     if (command === 'inbox') {

@@ -59,7 +59,7 @@ export class Policy {
     // a phone watch. Never infer identity from message text or group members.
     const chats = /^\d+@lid$/.test(row.chat) && /^\d{7,15}@s\.whatsapp\.net$/.test(row.phoneJid)
       ? [row.phoneJid, row.chat] : [row.chat];
-    const eligible = floor => floor && !row.fromMe && ['notify', 'append'].includes(row.source) &&
+    const eligible = floor => floor && !row.fromMe && ['notify', 'append', 'replay'].includes(row.source) &&
       row.seq > floor.seq && Number.isFinite(row.timestamp) && row.timestamp * 1000 >= floor.at - 1000;
     // Explicit task attention wins over broad inbox attention, so an all-mode
     // fallback cannot rename an event away from its approved task contact.
@@ -71,7 +71,7 @@ export class Policy {
   event(row, conversationId = row.chat) {
     return { id: String(row.seq), conversationId, receivedAt: Date.parse(row.capturedAt),
       text: JSON.stringify({ messageId: row.id, participant: row.participant, type: row.type, text: row.text?.slice(0, 10000) ?? null, mediaAvailable: row.mediaAvailable ?? false,
-        ...(row.transcription ? { transcription: row.transcription } : {}) }) };
+        ...(row.transcription ? { transcription: row.transcription } : {}), ...(row.document ? { document: row.document } : {}), ...(row.replayOf ? {replayOf:row.replayOf} : {}) }) };
   }
   async events(after = 0) {
     if (!Number.isSafeInteger(after) || after < 0) throw fail('INVALID_INPUT', 'Invalid event cursor');
@@ -83,9 +83,9 @@ export class Policy {
       let cursor = after;
       for (const row of page.messages) {
         const target = this.target(row, policy, watches);
-        if (target && row.transcription?.state === 'processing') break;
+        if (target && (row.transcription?.state === 'processing' || row.document?.state === 'processing')) break;
         cursor = row.seq;
-        if (target && row.transcription?.state !== 'processing') events.push(this.event(row, target));
+        if (target && (row.transcription?.state !== 'processing' && row.document?.state !== 'processing')) events.push(this.event(row, target));
         if (events.length === 10) break;
       }
       return { cursor, events };
@@ -101,7 +101,7 @@ export class Policy {
         const page = await this.store.messages(Number(id) - 1, 1);
         const row = page.messages[0];
         const target = row?.seq === Number(id) && this.target(row, policy, watches);
-        if (target && row.transcription?.state !== 'processing') events.push(this.event(row, target));
+        if (target && (row.transcription?.state !== 'processing' && row.document?.state !== 'processing')) events.push(this.event(row, target));
       }
       return { events };
     });

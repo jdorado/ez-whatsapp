@@ -5,11 +5,14 @@ import { unlink } from 'node:fs/promises';
 import { authState } from './auth.mjs';
 import { normalize } from './messages.mjs';
 import { History } from './history.mjs';
+import { Documents } from './documents.mjs';
 import { Audio } from './audio.mjs';
 import { atomic, fail, readJSON, writeJSON, privateDir, hash } from './store.mjs';
 
 export async function createTransport(store, lib = baileys, options = {}) {
-  const history = new History(store);
+  const documents = new Documents(store, lib);
+  await documents.init();
+  const history = new History(store, async (message, row) => documents.capture(message, row, () => !stopped && status.connected));
   const audio = new Audio(store, lib, options.fetch);
   await audio.init();
   let auth = await authState(store.dir, lib);
@@ -36,6 +39,8 @@ export async function createTransport(store, lib = baileys, options = {}) {
       return api.status();
     },
     async close() { stopped = true; clearTimeout(timer); socket?.end(undefined); await events; await history.queue; await auth.flush(); await removeQR(); },
+    documentRead: row => documents.read(row),
+    documentReplay: (chat, seq) => documents.replay(chat, seq),
     historyStatus: () => history.status(),
     async historyRequest(args) {
       if (stopped || !status.connected) throw fail('UNAVAILABLE', 'WhatsApp must be connected to request history');
@@ -154,6 +159,10 @@ export async function createTransport(store, lib = baileys, options = {}) {
             await store.ingest({ ...row, transcription: { state: 'processing' } });
             const captured = await audio.capture(message, await store.readMessage(row), stillCurrent);
             await store.updateMessage({ ...captured, transcription: captured.transcription?.state === 'processing' ? { state: 'skipped' } : captured.transcription });
+          } else if (row.type === 'documentMessage' && !row.fromMe && await documents.target(row)) {
+            await store.ingest({ ...row, document: { state: 'processing' } });
+            const captured = await documents.capture(message, await store.readMessage(row), stillCurrent);
+            await store.updateMessage({ ...captured, document: captured.document?.state === 'processing' ? { state: 'failed', code: 'DOCUMENT_CAPTURE_CANCELLED' } : captured.document });
           } else await store.ingest(await audio.capture(message, row, stillCurrent));
         }
         if (message.key?.fromMe && message.key.id) await api.onReceipt(message.key.id, 'accepted');

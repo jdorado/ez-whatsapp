@@ -1,5 +1,7 @@
 # Changelog
 
+- Private QA: retain watched TXT/PDF documents and replay recovered originals through the existing source; media downloads share the audio transport validator.
+
 ## 0.1.0-beta.17
 
 - Correct the current beta version in the README and release guide, carrying
