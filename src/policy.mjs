@@ -69,9 +69,24 @@ export class Policy {
   }
   eligible(row, policy, watches = {}) { return Boolean(this.target(row, policy, watches)); }
   event(row, conversationId = row.chat) {
-    return { id: String(row.seq), conversationId, receivedAt: Date.parse(row.capturedAt),
-      text: JSON.stringify({ messageId: row.id, participant: row.participant, type: row.type, text: row.text?.slice(0, 10000) ?? null, mediaAvailable: row.mediaAvailable ?? false,
-        ...(row.transcription ? { transcription: row.transcription } : {}), ...(row.document ? { document: row.document } : {}), ...(row.replayOf ? {replayOf:row.replayOf} : {}), ...(row.caption ? {caption:row.caption} : {}) }) };
+    const payload={ messageId: row.id, participant: row.participant, type: row.type, text: row.text?.slice(0,10000) ?? null, mediaAvailable: row.mediaAvailable ?? false,
+      ...(row.transcription ? {transcription:row.transcription} : {}), ...(row.document ? {document:row.document} : {}), ...(row.replayOf ? {replayOf:row.replayOf} : {}), ...(row.caption ? {caption:row.caption} : {}) };
+    // The source protocol bounds serialized event text, including JSON escapes.
+    // Preserve complete content in private capture; truncate only this delivery.
+    if (JSON.stringify(payload).length > 16000) {
+      payload.truncated=true;
+      const text=payload.text ?? '', caption=payload.caption ?? '';
+      payload.text='';if (payload.caption) payload.caption='';
+      const budget=16000-JSON.stringify(payload).length;
+      const prefix=(value,limit)=>{
+        let low=0,high=value.length;
+        while(low<high){const mid=Math.ceil((low+high)/2);if(JSON.stringify(value.slice(0,mid)).length-2<=limit)low=mid;else high=mid-1;}
+        return value.slice(0,low);
+      };
+      if (caption) payload.caption=prefix(caption,Math.min(3000,budget));
+      payload.text=prefix(text,Math.max(0,budget-(JSON.stringify(payload.caption ?? '').length-2)));
+    }
+    return {id:String(row.seq),conversationId,receivedAt:Date.parse(row.capturedAt),text:JSON.stringify(payload)};
   }
   async events(after = 0) {
     if (!Number.isSafeInteger(after) || after < 0) throw fail('INVALID_INPUT', 'Invalid event cursor');
