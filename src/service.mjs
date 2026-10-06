@@ -19,6 +19,7 @@ export class Service {
       return { mimeType: 'image/png', base64: png.toString('base64'), qrCreatedAt: status.qrCreatedAt, qrRefreshAfterMs: status.qrRefreshAfterMs, qrRemainingMs: current.qrRemainingMs };
     }
     if (command === 'setup') { await this.transport.setup?.(); return this.call('doctor'); }
+    if (command === 'audio-configure') return this.transport.audioConfigure(args.config);
     if (command === 'repair') return this.transport.repair();
     if (command === 'history') return this.transport.historyRequest(args);
     if (command === 'history-status') return this.transport.historyStatus();

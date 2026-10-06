@@ -97,3 +97,8 @@ The provider dependency stack includes GPL-3.0 libsignal (see notices).
 
 Beta acceptance: automated tests, packed installs and Docker fixtures only. Live
 provider onboarding and reboot verification are deferred, not marked passed.
+# Unreleased
+
+- Transcribe new voice notes in watched conversations through privately configured
+  Gemini credentials. Preserve private audio provenance and pass transcripts
+  through existing authorized events; bound downloads and avoid automatic retry.

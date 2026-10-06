@@ -37,6 +37,10 @@ export class Store {
   serial(fn) { const next = this.queue.then(fn); this.queue = next.catch(() => {}); return next; }
   async operation(key) { return readJSON(this.path(`operations/${hash(key)}.json`), null); }
   async saveOperation(op) { await writeJSON(this.path(`operations/${hash(op.key)}.json`), op); }
+  async hasMessage(message) {
+    const id = hash(JSON.stringify([message.chat, message.id, message.fromMe, message.participant]));
+    return Boolean(await readJSON(this.path(`messages/${id}.json`), null));
+  }
   async ingest(message) {
     return this.serial(async () => {
       const id = hash(JSON.stringify([message.chat, message.id, message.fromMe, message.participant]));

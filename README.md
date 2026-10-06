@@ -95,12 +95,36 @@ provider guarantee or automatic uncertain-send retry.
 `inbox` returns bounded pages with durable `nextCursor`; save the cursor after
 processing. It includes incoming and observed outgoing messages (`fromMe`), chat
 JID, participant, text/caption, content type and source. LIDs remain opaque.
-Media metadata is captured, but attachments are not downloaded or transcribed.
+New voice notes in watched chats can be downloaded and transcribed after private
+audio configuration; see below. Other attachments remain metadata-only.
 Coverage includes captured messages and explicitly requested partial history,
 not a full WhatsApp backup. No auto-replies,
 read-receipt sending or reactions. The service captures messages;
 subscription policy controls which new messages may wake a registered host. No content becomes an instruction
 or grants the sender authority. Status/broadcast traffic is ignored.
+
+### Voice notes
+
+Configure the selected account once through private JSON stdin, never argv:
+`ez whatsapp audio-configure < /private/gemini-audio.json`. The file contains only
+`{"geminiApiKey":"YOUR_EXISTING_GEMINI_KEY"}`. Read back `doctor`'s `audio` field;
+it reports configuration, not provider authentication. To disable processing,
+submit `{"geminiApiKey":null}` through the same command.
+
+The service transcribes newly captured incoming audio only for active task
+watches or subscribed chats, using Gemini 3.8 Flash as a speech-to-text operation.
+It rechecks attention before upload. Unwatched, outgoing and historical audio
+is not downloaded or sent to the transcription provider. Limits are 8 MiB and
+10 minutes per note, with bounded download/provider timeouts and no automatic
+retry. The private account profile retains the downloaded original, its hash and
+the transcript for source provenance; these records survive plugin upgrades.
+
+`inbox` retains `type: audioMessage`, sets `text` to the transcript and includes
+`transcription` status and source hash. Existing core events deliver that same
+text to the authorized conversation; the native engine chooses its response.
+Failures retain an explicit status/code without exposing provider errors or
+credentials. Existing metadata-only captures are not retrospectively downloaded.
+There are no live WhatsApp calls, document parsing or audio replies in this path.
 
 ### Request older messages
 

@@ -5,10 +5,13 @@ import { unlink } from 'node:fs/promises';
 import { authState } from './auth.mjs';
 import { normalize } from './messages.mjs';
 import { History } from './history.mjs';
+import { Audio } from './audio.mjs';
 import { atomic, fail, readJSON, writeJSON, privateDir, hash } from './store.mjs';
 
-export async function createTransport(store, lib = baileys) {
+export async function createTransport(store, lib = baileys, options = {}) {
   const history = new History(store);
+  const audio = new Audio(store, lib, options.fetch);
+  await audio.init();
   let auth = await authState(store.dir, lib);
   await privateDir(store.path('outgoing'));
   const logger = pino({ level: 'silent' });
@@ -21,7 +24,8 @@ export async function createTransport(store, lib = baileys) {
   const enqueue = fn => { events = events.then(fn).catch(fatal); };
   const api = {
     onReceipt: async () => {},
-    status: () => ({ ...status, ...(status.qrPath ? { qrAgeMs: Date.now() - Date.parse(status.qrCreatedAt), qrRemainingMs: Math.max(0, Date.parse(status.qrCreatedAt) + status.qrRefreshAfterMs - Date.now()) } : {}) }),
+    status: () => ({ ...status, audio: audio.status(), ...(status.qrPath ? { qrAgeMs: Date.now() - Date.parse(status.qrCreatedAt), qrRemainingMs: Math.max(0, Date.parse(status.qrCreatedAt) + status.qrRefreshAfterMs - Date.now()) } : {}) }),
+    audioConfigure: value => audio.configure(value),
     async start() { await removeQR(); connect(); },
     async setup() {
       await events;
@@ -143,7 +147,10 @@ export async function createTransport(store, lib = baileys) {
       if (current !== socket || stopped) return;
       for (const message of batch.messages) {
         const row = normalize(message, lib.normalizeMessageContent, batch.type);
-        if (row) await store.ingest(row);
+        if (row && !await store.hasMessage(row)) {
+          const captured = await audio.capture(message, row, () => current === socket && !stopped && status.connected);
+          await store.ingest(captured);
+        }
         if (message.key?.fromMe && message.key.id) await api.onReceipt(message.key.id, 'accepted');
       }
     }));

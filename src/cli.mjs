@@ -13,6 +13,7 @@ export const help = `ez-whatsapp — standalone WhatsApp account plugin
   serve      Foreground socket service (captures messages; no agent execution)
   repair     Replace revoked (401) authentication; preserve pinned identity and records
   doctor     Live connection identity, QR image path, capabilities
+  audio-configure Private JSON stdin: {"geminiApiKey":"..."}; enables voice-note transcription for watched chats
   inbox      Captured messages: --after CURSOR --limit 1..100 [--chat JID]
   history    Request older messages: --chat JID --before CAPTURED_SEQ --limit 1..50
   history-status Latest request for this account (partial coverage; no automatic retry)
@@ -61,7 +62,12 @@ export async function main(argv = process.argv.slice(2)) {
       return;
     }
     let result;
-    if (command === 'setup') {
+    if (command === 'audio-configure') {
+      let input = '';
+      for await (const chunk of process.stdin) { input += chunk; if (Buffer.byteLength(input) > 4096) throw fail('INVALID_INPUT', 'Audio configuration is too large'); }
+      let config; try { config = JSON.parse(input); } catch { throw fail('INVALID_INPUT', 'Supply audio configuration as private JSON stdin'); }
+      result = await client(profile, command, { account: v.account, config }, v.socket);
+    } else if (command === 'setup') {
       result = await client(profile, 'setup', { account: v.account }, v.socket);
       result = { ...result, next: 'Scan the current QR if needed, then verify connected identity with doctor' };
     } else {

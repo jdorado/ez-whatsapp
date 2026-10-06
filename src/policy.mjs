@@ -70,7 +70,8 @@ export class Policy {
   eligible(row, policy, watches = {}) { return Boolean(this.target(row, policy, watches)); }
   event(row, conversationId = row.chat) {
     return { id: String(row.seq), conversationId, receivedAt: Date.parse(row.capturedAt),
-      text: JSON.stringify({ messageId: row.id, participant: row.participant, type: row.type, text: row.text?.slice(0, 10000) ?? null, mediaAvailable: row.mediaAvailable ?? false }) };
+      text: JSON.stringify({ messageId: row.id, participant: row.participant, type: row.type, text: row.text?.slice(0, 10000) ?? null, mediaAvailable: row.mediaAvailable ?? false,
+        ...(row.transcription ? { transcription: row.transcription } : {}) }) };
   }
   async events(after = 0) {
     if (!Number.isSafeInteger(after) || after < 0) throw fail('INVALID_INPUT', 'Invalid event cursor');
