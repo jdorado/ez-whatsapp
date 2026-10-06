@@ -84,7 +84,7 @@ test('real provider event path deduplicates speech and dispatches transcript thr
   const until = async condition => { for (let i = 0; i < 200; i++) { if (await condition()) return; await new Promise(r => setTimeout(r, 5)); } assert.fail('Provider event did not settle'); };
   await until(() => transport.status().connected);
   socket.ev.emit('messages.upsert', { type: 'notify', messages: [voice(), voice()] });
-  await until(async () => (await f.store.messages()).messages.length === 1);
+  await until(async () => (await f.store.messages()).messages[0]?.transcription?.state === 'transcribed');
   await transport.close();
   assert.deepEqual(f.counts(), { downloads: 1, requests: 1 });
   const events = await f.policy.events(); assert.equal(events.events.length, 1);
