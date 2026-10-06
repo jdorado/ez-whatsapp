@@ -26,7 +26,7 @@ export class Audio {
   }
   validate(value) {
     if (!value || Object.keys(value).some(k => k !== 'geminiApiKey') ||
-        (value.geminiApiKey !== null && (typeof value.geminiApiKey !== 'string' || !/^[A-Za-z0-9_-]{20,256}$/.test(value.geminiApiKey))))
+        (value.geminiApiKey !== null && (typeof value.geminiApiKey !== 'string' || !/^[!-~]{20,256}$/.test(value.geminiApiKey))))
       throw fail('INVALID_INPUT', 'Supply only geminiApiKey through private JSON stdin');
   }
   status() { return { configured: Boolean(this.config), provider: 'gemini', model: audioModel, maxBytes: maxAudioBytes, maxSeconds }; }

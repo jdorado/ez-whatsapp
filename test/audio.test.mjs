@@ -30,6 +30,8 @@ async function fixture(t) {
     return new Response(JSON.stringify({ responseId: 'receipt-1', candidates: [{ content: { parts: [{ text: 'El proveedor llegó tarde.' }] } }] }));
   };
   const audio = new Audio(store, lib, fetch); await audio.init();
+  await audio.configure({ geminiApiKey: 'AQ.' + 'a'.repeat(50) });
+  await assert.rejects(audio.configure({ geminiApiKey: 'AQ.' + 'a'.repeat(30) + '\n' }), { code: 'INVALID_INPUT' });
   await audio.configure({ geminiApiKey: key });
   return { store, policy, audio, lib, fetch, counts: () => ({ downloads, requests }) };
 }
