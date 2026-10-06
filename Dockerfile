@@ -5,7 +5,7 @@ COPY package.json pnpm-workspace.yaml ./
 COPY docker/pnpm-lock.yaml ./pnpm-lock.yaml
 COPY patches ./patches
 RUN pnpm install --frozen-lockfile --ignore-scripts
-COPY . .
+COPY --chown=node:node . .
 FROM dependencies AS test
 RUN pnpm verify
 FROM dependencies AS runtime
