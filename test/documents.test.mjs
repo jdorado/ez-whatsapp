@@ -64,7 +64,7 @@ test('explicit history recovery and replay use current attention without broaden
 });
 
 test('watched images use the same private bytes, source read and idempotent replay path',async t=>{
- const f=await fixture(t),png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jMZkAAAAASUVORK5CYII=','base64');f.setData(png)
+ const f=await fixture(t),png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=','base64');f.setData(png)
  const row={...f.row,type:'imageMessage'},message={message:{imageMessage:{mimetype:'image/png',fileLength:png.length,url:'https://mmg.whatsapp.net/image'}}}
  await f.store.ingest(row); const captured=await f.docs.capture(message,await f.store.readMessage(row));await f.store.updateMessage(captured)
  assert.equal(captured.document.state,'available');assert.equal(captured.document.name,'image.png')
