@@ -104,6 +104,8 @@ test('processing audio is durable but not dispatched; restart marks interrupted 
   assert.deepEqual(f.counts(), { downloads: 0, requests: 0 });
 });
 test('installed Baileys forwards download cancellation and propagates upstream body errors', { timeout: 2000 }, async t => {
+  const keepAlive = setInterval(() => {}, 1000);
+  t.after(() => clearInterval(keepAlive));
   const original = globalThis.fetch;
   t.after(() => { globalThis.fetch = original; });
   globalThis.fetch = async (_url, options) => new Promise((_resolve, reject) => {
