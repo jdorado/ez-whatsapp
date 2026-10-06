@@ -19,16 +19,20 @@ export class Documents {
   }
   async capture(message, row, stillCurrent = () => true, recovery = false) {
     const allowed = () => recovery ? this.activeTarget(row) : this.target(row);
-    if (row.fromMe || row.type !== 'documentMessage' || !stillCurrent() || !await allowed()) return row;
-    const media = this.lib.normalizeMessageContent(message.message)?.documentMessage;
-    const name = media?.fileName;
-    if (typeof name !== 'string' || !/\.(pdf|txt|md|markdown)$/i.test(name) || name.length > 255)
+    if (row.fromMe || !['documentMessage','imageMessage'].includes(row.type) || !stillCurrent() || !await allowed()) return row;
+    const content = this.lib.normalizeMessageContent(message.message);
+    const image = row.type === 'imageMessage';
+    const media = image ? content?.imageMessage : content?.documentMessage;
+    const mime = media?.mimetype?.split(';')[0]?.trim();
+    if (image && !['image/jpeg','image/png','image/webp'].includes(mime)) return {...row,document:{state:'failed',code:'IMAGE_UNSUPPORTED'}};
+    const name = image ? `image.${mime.split('/')[1]}` : media?.fileName;
+    if (typeof name !== 'string' || !(image ? /\.(jpeg|png|webp)$/i : /\.(pdf|txt|md|markdown)$/i).test(name) || name.length > 255)
       return { ...row, document: { state: 'failed', code: 'DOCUMENT_UNSUPPORTED' } };
     const length = Number(media.fileLength);
     if (!Number.isSafeInteger(length) || length < 1 || length > maxDocumentBytes)
       return { ...row, document: { state: 'failed', code: 'DOCUMENT_TOO_LARGE' } };
     try {
-      const bytes = await downloadMedia(this.lib, media, 'document', maxDocumentBytes);
+      const bytes = await downloadMedia(this.lib, media, image ? 'image' : 'document', maxDocumentBytes);
       if (bytes.length !== length) throw fail('DOCUMENT_CHANGED', 'Document byte count changed');
       if (!stillCurrent() || !await allowed()) return row;
       await privateDir(this.store.path('documents'));
@@ -53,7 +57,7 @@ export class Documents {
   async replay(chat, seq) {
     if (!Number.isSafeInteger(seq) || seq < 1) throw fail('INVALID_INPUT', 'Supply one captured document seq');
     const row = (await this.store.messages(seq - 1, 1, chat)).messages[0];
-    if (!row || row.seq !== seq || row.fromMe || row.type !== 'documentMessage' || row.replayOf || !await this.activeTarget(row)) throw fail('NOT_FOUND', 'Document is not in an active watched conversation');
+    if (!row || row.seq !== seq || row.fromMe || !['documentMessage','imageMessage'].includes(row.type) || row.replayOf || !await this.activeTarget(row)) throw fail('NOT_FOUND', 'Document is not in an active watched conversation');
     await this.read(row);
     // Explicit owner replay uses the existing captured-event transport; original
     // provider identity, timestamp and capture record stay unchanged.

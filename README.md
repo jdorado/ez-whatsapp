@@ -390,12 +390,13 @@ sends after repair. If no QR appears, report the actual doctor state.
 
 Spoken replies use the existing core speech renderer. This plugin accepts bounded Ogg Opus from authorized `task-send` calls and advertises `taskVoice`; it uploads a WhatsApp push-to-talk message and keeps audio hashes in the existing operation receipt. No synthesis credentials or provider are configured here. `send --text-file TRANSCRIPT --audio-file VOICE.ogg` uses the same receipt key and account checks. Maximum encoded audio is 256,000 bytes.
 
-## Incoming TXT and PDF documents
+## Incoming documents and images
 
-Watched incoming documents retain up to 10 MiB of private provider-downloaded
+Watched incoming TXT/Markdown/PDF and JPEG/PNG/WebP images retain up to 10 MiB of private provider-downloaded
 bytes with their filename, byte count and SHA-256 in `inbox`. The approved
 restricted task reads them through core's shared attachment validation and
-bounded `read_attachment` tool. Documents remain untrusted input. Unsupported,
+bounded `read_attachment` tool. Images are passed to native vision as pixels;
+no image model or parser is called by the plugin. All files remain untrusted input. Unsupported,
 oversized or failed downloads report their state; there is no automatic retry.
 
 For an older captured document missing bytes, explicitly request `history
@@ -405,4 +406,4 @@ Check `inbox` for `document.state=available`, then use `document-replay --chat J
 --seq ORIGINAL_SEQ`. Replay preserves the original record and emits one
 idempotent, explicitly marked event through the existing transport. It requires
 an active watch and retained bytes; recovery depends on the phone/provider
-returning the original media reference. No reply is sent by the replay command.
+returning the original media reference. No reply is sent by the replay command. The same command also replays images.

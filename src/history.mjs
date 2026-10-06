@@ -51,7 +51,7 @@ export class History {
         const row = normalize(message, unwrap, 'history');
         if (row?.chat !== value.chat) continue;
         const old = await this.store.readMessage(row);
-        if (old?.type === 'documentMessage' && old.document?.state !== 'available' && this.capture) { await this.store.updateMessage(await this.capture(message, old)); recovered++; }
+        if (old && ['documentMessage','imageMessage'].includes(old.type) && old.document?.state !== 'available' && this.capture) { await this.store.updateMessage(await this.capture(message, old)); recovered++; }
         if (!old && await this.store.ingest({ ...row, historyRequestId: value.id })) value.received++;
       }
       value.state = 'received'; // Provider response, never a complete-export claim.

@@ -159,7 +159,7 @@ export async function createTransport(store, lib = baileys, options = {}) {
             await store.ingest({ ...row, transcription: { state: 'processing' } });
             const captured = await audio.capture(message, await store.readMessage(row), stillCurrent);
             await store.updateMessage({ ...captured, transcription: captured.transcription?.state === 'processing' ? { state: 'skipped' } : captured.transcription });
-          } else if (row.type === 'documentMessage' && !row.fromMe && await documents.target(row)) {
+          } else if (['documentMessage','imageMessage'].includes(row.type) && !row.fromMe && await documents.target(row)) {
             await store.ingest({ ...row, document: { state: 'processing' } });
             const captured = await documents.capture(message, await store.readMessage(row), stillCurrent);
             await store.updateMessage({ ...captured, document: captured.document?.state === 'processing' ? { state: 'failed', code: 'DOCUMENT_CAPTURE_CANCELLED' } : captured.document });

@@ -62,3 +62,17 @@ test('explicit history recovery and replay use current attention without broaden
  const replay=await f.docs.replay(chat,1);assert.equal((await f.policy.events(1)).events[0].id,String(replay.replay.seq));
  await f.policy.unwatch(chat); await assert.rejects(f.docs.replay(chat,1));
 });
+
+test('watched images use the same private bytes, source read and idempotent replay path',async t=>{
+ const f=await fixture(t),png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jMZkAAAAASUVORK5CYII=','base64');f.setData(png)
+ const row={...f.row,type:'imageMessage'},message={message:{imageMessage:{mimetype:'image/png',fileLength:png.length,url:'https://mmg.whatsapp.net/image'}}}
+ await f.store.ingest(row); const captured=await f.docs.capture(message,await f.store.readMessage(row));await f.store.updateMessage(captured)
+ assert.equal(captured.document.state,'available');assert.equal(captured.document.name,'image.png')
+ const replay=await f.docs.replay(chat,1);const bytes=await f.docs.read(replay.replay);assert.equal(bytes.data,png.toString('base64'))
+ assert.equal((await f.policy.events(1)).events.length,1);assert.equal((await f.docs.replay(chat,1)).replay.seq,replay.replay.seq)
+ await f.policy.unwatch(chat);await assert.rejects(f.docs.replay(chat,1))
+ const invalid={message:{imageMessage:{...message.message.imageMessage,mimetype:'image/svg+xml'}}}
+ // Direct normal capture of a new watched image rejects unsupported MIME before download.
+ await f.policy.watch(chat,Date.now()+3600000)
+ assert.equal((await f.docs.capture(invalid,{...row,timestamp:Date.now()/1000})).document.code,'IMAGE_UNSUPPORTED')
+})

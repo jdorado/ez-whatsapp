@@ -1,5 +1,7 @@
 # Changelog
 
+- Private QA: watched JPEG/PNG/WebP images share document-byte capture, explicit history recovery and idempotent replay.
+
 - Private QA: retain watched TXT/PDF documents and replay recovered originals through the existing source; media downloads share the audio transport validator.
 
 ## 0.1.0-beta.17

@@ -16,7 +16,7 @@ export const help = `ez-whatsapp — standalone WhatsApp account plugin
   audio-configure Private JSON stdin: {"geminiApiKey":"..."}; enables voice-note transcription for watched chats
   inbox      Captured messages: --after CURSOR --limit 1..100 [--chat JID]
   history    Request older messages: --chat JID --before CAPTURED_SEQ --limit 1..50
-  document-replay --chat JID --seq CAPTURED_SEQ (explicit replay of retained TXT/PDF)
+  document-replay --chat JID --seq CAPTURED_SEQ (explicit replay of retained TXT/PDF/image)
   history-status Latest request for this account (partial coverage; no automatic retry)
   policy     Read wake policy, or set --mode manual|selected|all
   subscribe  Watch new incoming messages in --chat JID
