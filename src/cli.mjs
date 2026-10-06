@@ -1,7 +1,7 @@
 import { parseArgs } from 'node:util';
 import { resolve, isAbsolute } from 'node:path';
 import { existsSync } from 'node:fs';
-import { readFile } from 'node:fs/promises';
+import { stat, readFile } from 'node:fs/promises';
 import { client } from './client.mjs';
 import { fail } from './store.mjs';
 export const help = `ez-whatsapp — standalone WhatsApp account plugin
@@ -21,7 +21,7 @@ export const help = `ez-whatsapp — standalone WhatsApp account plugin
   subscribe  Watch new incoming messages in --chat JID
   unsubscribe Stop watching --chat JID (capture continues)
   verify     Check recipient: --to +COUNTRYNUMBER|JID
-  send       --to NUMBER|JID --text-file FILE --idempotency-key KEY [--preview]
+  send       --to NUMBER|JID --text-file FILE [--audio-file OGG_OPUS_FILE] --idempotency-key KEY [--preview]
   operation  --idempotency-key KEY (inspect acceptance/delivery/uncertainty)
 
 Use --profile /absolute/private/directory, or --socket /absolute/service.sock
@@ -39,7 +39,7 @@ export async function main(argv = process.argv.slice(2)) {
   process.umask(0o077);
   try {
     const { values: v, positionals } = parseArgs({ args: argv, allowPositionals: true, options: Object.fromEntries([
-      ...['profile','socket','to','text-file','idempotency-key','after','before','limit','chat','mode','account','purpose'].map(k => [k, { type: 'string' }]),
+      ...['profile','socket','to','text-file','audio-file','idempotency-key','after','before','limit','chat','mode','account','purpose'].map(k => [k, { type: 'string' }]),
       ...['help','version','json','preview'].map(k => [k, { type: 'boolean' }])
     ]) });
     if (v.help || (!positionals.length && !v.version)) { process.stdout.write(help); return; }
@@ -77,6 +77,10 @@ export async function main(argv = process.argv.slice(2)) {
       if (command === 'send') {
         if (!v['text-file']) throw fail('INVALID_INPUT', 'Supply --text-file');
         args.text = await readFile(v['text-file'], 'utf8');
+        if (v['audio-file']) {
+          const info = await stat(v['audio-file']); if (!info.isFile() || info.size > 256000) throw fail('INVALID_INPUT', 'Voice file exceeds limit');
+          args.audio = { data: (await readFile(v['audio-file'])).toString('base64'), mimeType: 'audio/ogg' };
+        }
       }
       result = await client(profile, command, args, v.socket);
     }

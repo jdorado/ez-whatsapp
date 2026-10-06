@@ -194,3 +194,5 @@ the current QR privately using `ez plugins export whatsapp qr --output <new-file
 and have the owner scan with the original account. Verify `connected: true` and
 the intended identity. A different account fails closed. Never replay uncertain
 sends after repair. If no QR appears, report the actual doctor state.
+
+Spoken replies: core task `send` may use `voice: true` when available. Core generates speech; WhatsApp only accepts Ogg Opus and tracks the upload receipt. For an already generated file, `send --text-file TRANSCRIPT --audio-file VOICE.ogg --to CONTACT --idempotency-key KEY` sends a voice note. Reuse the same key; never resend uncertain audio with a new key.

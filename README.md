@@ -387,3 +387,5 @@ the current QR privately using `ez plugins export whatsapp qr --output <new-file
 and have the owner scan with the original account. Verify `connected: true` and
 the intended identity. A different account fails closed. Never replay uncertain
 sends after repair. If no QR appears, report the actual doctor state.
+
+Spoken replies use the existing core speech renderer. This plugin accepts bounded Ogg Opus from authorized `task-send` calls and advertises `taskVoice`; it uploads a WhatsApp push-to-talk message and keeps audio hashes in the existing operation receipt. No synthesis credentials or provider are configured here. `send --text-file TRANSCRIPT --audio-file VOICE.ogg` uses the same receipt key and account checks. Maximum encoded audio is 256,000 bytes.

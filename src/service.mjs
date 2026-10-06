@@ -26,7 +26,7 @@ export class Service {
     if (command === 'doctor') return { ...this.transport.status(), profile: this.store.dir, capabilities: ['send-text', 'read-captured-messages', 'request-chat-history'], eventSource: true, wakePolicy: await this.policy.get(), hostDispatchRequired: true };
     if (command === 'policy') return args.mode === undefined ? this.policy.get() : this.policy.change(command, args);
     if (['subscribe', 'unsubscribe'].includes(command)) return this.policy.change(command, args);
-    if (command === 'events-head') return { cursor: await this.policy.head(), taskProtocol: 'message-v1', persistentWatch: true, accountId: this.transport.status().account?.jid ?? null };
+    if (command === 'events-head') return { cursor: await this.policy.head(), taskProtocol: 'message-v1', persistentWatch: true, taskVoice: true, accountId: this.transport.status().account?.jid ?? null };
     if (command === 'task-unwatch') {
       this.checkTaskAccount(args.accountId);
       const chat = recipient(args.conversationId);
@@ -43,7 +43,7 @@ export class Service {
       this.checkTaskAccount(args.accountId);
       const to = recipient(args.conversationId);
       if (to !== args.conversationId) throw fail('INVALID_INPUT', 'Task conversation must be one canonical chat');
-      const op = await this.call('send', { to, text: args.text, key: args.key, expectedAccount: args.accountId });
+      const op = await this.call('send', { to, text: args.text, key: args.key, expectedAccount: args.accountId, audio: args.audio });
       if (op.account?.jid !== args.accountId) throw fail('ACCOUNT_MISMATCH', 'Operation belongs to another account');
       return { accountId: args.accountId, conversationId: op.to, key: op.key, state: ['accepted', 'delivered', 'read'].includes(op.state) ? 'accepted' : 'uncertain', receiptId: op.providerMessageId };
     }
@@ -65,10 +65,19 @@ export class Service {
     const to = recipient(args.to);
     if (typeof args.text !== 'string' || !args.text.trim() || args.text.length > 4096) throw fail('INVALID_INPUT', 'Text must contain 1..4096 characters');
     if (typeof args.key !== 'string' || !/^[\w:.-]{1,160}$/.test(args.key)) throw fail('INVALID_INPUT', 'Supply a stable idempotency key (1..160 letters, digits, :, ., _, -)');
-    if (args.preview) return { preview: true, to, text: args.text, key: args.key, account: this.transport.status().account };
+    let audio;
+    if (args.audio !== undefined) {
+      const value = args.audio;
+      if (!value || Object.keys(value).some(k => !['data','mimeType'].includes(k)) || value.mimeType !== 'audio/ogg' ||
+          typeof value.data !== 'string' || value.data.length > 341336 || !/^[A-Za-z0-9+/]+={0,2}$/.test(value.data)) throw fail('INVALID_INPUT', 'Supply bounded Ogg Opus audio');
+      audio = Buffer.from(value.data, 'base64');
+      if (!audio.length || audio.length > 256000 || audio.toString('base64') !== value.data || audio.subarray(0,4).toString() !== 'OggS' || !audio.includes(Buffer.from('OpusHead')))
+        throw fail('INVALID_INPUT', 'Supply bounded Ogg Opus audio');
+    }
+    if (args.preview) return { preview: true, to, text: args.text, key: args.key, account: this.transport.status().account, ...(audio ? {audio:{bytes:audio.length,sha256:hash(audio)}} : {}) };
     return this.store.serial(async () => {
       if (args.expectedAccount) this.checkTaskAccount(args.expectedAccount);
-      const digest = hash(JSON.stringify([to, args.text]));
+      const digest = hash(JSON.stringify([to, args.text, ...(audio ? [hash(audio)] : [])]));
       const prior = await this.store.operation(args.key);
       if (prior) {
         if (prior.digest !== digest) throw fail('KEY_CONFLICT', 'Key belongs to a different payload');
@@ -79,11 +88,11 @@ export class Service {
       const verified = await this.transport.verify(to);
       if (args.expectedAccount) this.checkTaskAccount(args.expectedAccount);
       if (!verified.exists) throw fail('NOT_FOUND', 'Recipient could not be verified');
-      const op = { key: args.key, digest, to, account: this.transport.status().account, state: 'pending', providerMessageId: randomBytes(16).toString('hex').toUpperCase(), createdAt: new Date().toISOString() };
+      const op = { key: args.key, digest, to, account: this.transport.status().account, state: 'pending', providerMessageId: randomBytes(16).toString('hex').toUpperCase(), createdAt: new Date().toISOString(), ...(audio ? {audio:{bytes:audio.length,sha256:hash(audio),mimeType:'audio/ogg'}} : {}) };
       await this.store.saveOperation(op);
       try {
         if (args.expectedAccount) this.checkTaskAccount(args.expectedAccount);
-        const result = await this.transport.send(to, args.text, op.providerMessageId, args.expectedAccount);
+        const result = await this.transport.send(to, args.text, op.providerMessageId, args.expectedAccount, audio);
         if (result?.id !== op.providerMessageId) throw fail('UNCERTAIN', 'Missing expected provider message ID');
         op.state = 'accepted'; // socket acceptance is not recipient delivery
         op.acceptedAt = new Date().toISOString();
@@ -139,7 +148,7 @@ export async function serve(dir, createTransport, socketPath = join(dir, 'servic
       try {
         if (req.method !== 'POST' || req.url !== '/') throw fail('INVALID_INPUT', 'POST / required');
         let body = '';
-        for await (const chunk of req) { body += chunk; if (Buffer.byteLength(body) > 32768) throw fail('INVALID_INPUT', 'Request too large'); }
+        for await (const chunk of req) { body += chunk; if (Buffer.byteLength(body) > 400000) throw fail('INVALID_INPUT', 'Request too large'); }
         let input; try { input = JSON.parse(body); } catch { throw fail('INVALID_INPUT', 'Invalid JSON'); }
         if (options.singleAccount && input.args?.account !== undefined && input.args.account !== options.accountName)
           throw fail('ACCOUNT_MISMATCH', 'This socket is bound to another named account');

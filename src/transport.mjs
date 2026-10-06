@@ -79,11 +79,12 @@ export async function createTransport(store, lib = baileys, options = {}) {
       const result = await socket.onWhatsApp(jid);
       return { exists: result?.[0]?.exists === true, jid: result?.[0]?.jid ?? jid, kind: 'phone' };
     },
-    async send(jid, text, messageId, expectedAccount) {
+    async send(jid, text, messageId, expectedAccount, audio) {
       // Provider protocol resend requests need the original payload, not another user send.
-      await writeJSON(store.path(`outgoing/${hash(messageId)}.json`), { conversation: text });
+      await writeJSON(store.path(`outgoing/${hash(messageId)}.json`), audio ? {} : { conversation: text });
       if (expectedAccount && (!status.connected || status.account?.jid !== expectedAccount)) throw fail('ACCOUNT_MISMATCH', 'Task account changed before dispatch');
-      const result = await socket.sendMessage(jid, { text }, { messageId });
+      const result = await socket.sendMessage(jid, audio ? { audio, mimetype: 'audio/ogg; codecs=opus', ptt: true } : { text }, { messageId });
+      if (audio && result?.message) await writeJSON(store.path(`outgoing/${hash(messageId)}.json`), result.message);
       return { id: result?.key?.id };
     }
   };

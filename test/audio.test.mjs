@@ -127,3 +127,20 @@ test('installed Baileys forwards download cancellation and propagates upstream b
   await new Promise(resolve => setTimeout(resolve, 20));
   assert.equal(cancelled, true);
 });
+
+test('provider transport uploads voice as push-to-talk audio and preserves the provider resend message', async t => {
+  const f=await fixture(t);let socket,request,settings;
+  const lib={...f.lib,default: options => {
+    settings=options;
+    return socket={ev:new EventEmitter(),user:{id:'15551230000:1@s.whatsapp.net'},end(){},
+      sendMessage:async (_jid,content,{messageId}) => { request=content;return {key:{id:messageId},message:{audioMessage:{url:'https://mmg.whatsapp.net/fixture'}}}; }};
+  }};
+  const transport=await createTransport(f.store,lib,{fetch:f.fetch});t.after(()=>transport.close());await transport.start();
+  socket.ev.emit('connection.update',{connection:'open'});
+  for(let i=0;i<100&&!transport.status().connected;i++)await new Promise(r=>setTimeout(r,5));
+  const audio=Buffer.from('OggSfixture OpusHead');
+  await transport.send(contact,'Spoken fixture','fixture-audio-id','15551230000@s.whatsapp.net',audio);
+  assert.deepEqual(request,{audio,mimetype:'audio/ogg; codecs=opus',ptt:true});
+  const original=await settings.getMessage({id:'fixture-audio-id'});
+  assert.equal(original.audioMessage.url,'https://mmg.whatsapp.net/fixture');assert.equal(original.conversation,undefined);
+});
