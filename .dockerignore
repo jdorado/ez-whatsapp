@@ -24,3 +24,5 @@
 !LICENSE-MIT
 
 !pnpm-workspace.yaml
+
+!patches/**

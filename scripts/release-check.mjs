@@ -9,6 +9,11 @@ const names=pack.files.map(f=>f.path);
 for(const required of ['LICENSE','README.md','SECURITY.md','CONTRIBUTING.md','CHANGELOG.md','THIRD_PARTY_NOTICES.md','Dockerfile','.dockerignore','docker/pnpm-lock.yaml']) assert(names.includes(required),`Missing ${required}`);
 for(const name of names) assert(!/^agent\//.test(name) && !/(^|\/)(node_modules|\.git|\.private|todo\.md|principles\.md|backlog\.md|sprints\.md)(\/|$)|(^|\/)\.env$|\.(tgz|log)$|(^|\/)(qa|plugin-manager-qa|spec-benchmark)\.md$/.test(name),`Private/internal package entry: ${name}`);
 for(const entry of p.files) assert(names.some(name=>name===entry || name.startsWith(entry+'/')),`Declared package entry missing: ${entry}`);
+for(const patch of names.filter(name=>name.startsWith('patches/'))) {
+ assert(readFileSync('.dockerignore','utf8').split('\n').includes('!patches/**'), 'Dependency patches must be in the Docker build context');
+ assert(readFileSync('Dockerfile','utf8').includes('COPY patches ./patches'), 'Dependency patches must be copied before installation');
+ assert(readFileSync('docker/pnpm-lock.yaml','utf8').includes(`path: ${patch}`), `Unbound dependency patch: ${patch}`);
+}
 for(const bin of Object.values(p.bin||{})) assert(names.includes(bin),`Missing binary ${bin}`);
 if(names.includes('ez-plugin.json')) assert.equal(JSON.parse(readFileSync('ez-plugin.json')).version,p.version);
 console.log(JSON.stringify({name:p.name,version:p.version,files:names,unpackedSize:pack.unpackedSize},null,2));
