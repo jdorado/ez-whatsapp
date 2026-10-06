@@ -76,3 +76,13 @@ test('watched images use the same private bytes, source read and idempotent repl
  await f.policy.watch(chat,Date.now()+3600000)
  assert.equal((await f.docs.capture(invalid,{...row,timestamp:Date.now()/1000})).document.code,'IMAGE_UNSUPPORTED')
 })
+
+test('video retains visuals, shares existing speech transcription and preserves caption',async t=>{
+ const f=await fixture(t),bytes=Buffer.from('captured-video');f.setData(bytes)
+ let calls=0;const docs=new Documents(f.store,f.lib,async(buffer,mime)=>{calls++;assert.equal(mime,'video/mp4');assert.equal(buffer.toString(),'captured-video');return {text:'The machine starts at 7am.',transcription:{state:'transcribed',responseId:'fixture-video-receipt'}}})
+ const row={...f.row,type:'videoMessage',text:'How does this work?'},message={message:{videoMessage:{mimetype:'video/mp4',seconds:2,fileLength:bytes.length,url:'https://mmg.whatsapp.net/v'}}}
+ await f.store.ingest(row);const captured=await docs.capture(message,await f.store.readMessage(row));await f.store.updateMessage(captured)
+ assert.equal(captured.document.state,'available');assert.equal(captured.text,'The machine starts at 7am.');assert.equal(captured.caption,'How does this work?');assert.equal(calls,1)
+ const replay=await docs.replay(chat,1);assert.equal((await docs.read(replay.replay)).data,bytes.toString('base64'));assert.equal(calls,1)
+ const event=JSON.parse((await f.policy.events(1)).events[0].text);assert.equal(event.caption,'How does this work?');assert.equal(event.transcription.state,'transcribed')
+})

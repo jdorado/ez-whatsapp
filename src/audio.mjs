@@ -63,8 +63,12 @@ export class Audio {
     }
     if (!stillCurrent() || !await this.target(row)) return row;
     await privateDir(this.store.path('audio'));
-    const source = { sha256: hash(bytes), bytes: bytes.length, mimeType };
     await atomic(this.store.path(`audio/${hash(JSON.stringify([row.chat, row.id, row.fromMe, row.participant]))}.bin`), bytes);
+    return this.transcribe(bytes,mimeType,row);
+  }
+  async transcribe(bytes,mimeType,row = {}) {
+    const source = {sha256:hash(bytes),bytes:bytes.length,mimeType};
+    if (!this.config) return {...row,transcription:{state:'unconfigured',...source}};
     try {
       const response = await this.fetch(`https://generativelanguage.googleapis.com/v1beta/models/${audioModel}:generateContent`, {
         method: 'POST', signal: AbortSignal.timeout(60000),

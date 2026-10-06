@@ -10,11 +10,11 @@ import { Audio } from './audio.mjs';
 import { atomic, fail, readJSON, writeJSON, privateDir, hash } from './store.mjs';
 
 export async function createTransport(store, lib = baileys, options = {}) {
-  const documents = new Documents(store, lib);
-  await documents.init();
-  const history = new History(store, async (message, row) => documents.capture(message, row, () => !stopped && status.connected, true));
   const audio = new Audio(store, lib, options.fetch);
   await audio.init();
+  const documents = new Documents(store, lib, (bytes,mime) => audio.transcribe(bytes,mime));
+  await documents.init();
+  const history = new History(store, async (message, row) => documents.capture(message, row, () => !stopped && status.connected, true));
   let auth = await authState(store.dir, lib);
   await privateDir(store.path('outgoing'));
   const logger = pino({ level: 'silent' });
@@ -159,7 +159,7 @@ export async function createTransport(store, lib = baileys, options = {}) {
             await store.ingest({ ...row, transcription: { state: 'processing' } });
             const captured = await audio.capture(message, await store.readMessage(row), stillCurrent);
             await store.updateMessage({ ...captured, transcription: captured.transcription?.state === 'processing' ? { state: 'skipped' } : captured.transcription });
-          } else if (['documentMessage','imageMessage'].includes(row.type) && !row.fromMe && await documents.target(row)) {
+          } else if (['documentMessage','imageMessage','videoMessage'].includes(row.type) && !row.fromMe && await documents.target(row)) {
             await store.ingest({ ...row, document: { state: 'processing' } });
             const captured = await documents.capture(message, await store.readMessage(row), stillCurrent);
             await store.updateMessage({ ...captured, document: captured.document?.state === 'processing' ? { state: 'failed', code: 'DOCUMENT_CAPTURE_CANCELLED' } : captured.document });

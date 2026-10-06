@@ -144,3 +144,20 @@ test('provider transport uploads voice as push-to-talk audio and preserves the p
   const original=await settings.getMessage({id:'fixture-audio-id'});
   assert.equal(original.audioMessage.url,'https://mmg.whatsapp.net/fixture');assert.equal(original.conversation,undefined);
 });
+
+// Video capture reuses the same faithful speech operation, with no image reasoning.
+test('video speech shares the configured transcriber and receipt without another download', async t => {
+  const f=await fixture(t);
+  f.audio.fetch=async (_url,options)=>{
+    const body=JSON.parse(options.body);
+    assert.equal(body.contents[0].parts[1].inlineData.mimeType,'video/mp4');
+    assert.equal(body.contents[0].parts[1].inlineData.data,Buffer.from('mp4 fixture').toString('base64'));
+    return new Response(JSON.stringify({responseId:'video-speech-1',candidates:[{content:{parts:[{text:'We close at six.'}]}}]}));
+  };
+  const result=await f.audio.transcribe(Buffer.from('mp4 fixture'),'video/mp4');
+  assert.equal(result.text,'We close at six.');
+  assert.equal(result.transcription.responseId,'video-speech-1');
+  assert.equal(result.transcription.mimeType,'video/mp4');
+  assert.equal(f.counts().downloads,0);
+  assert.ok(!JSON.stringify(result).includes(key));
+});

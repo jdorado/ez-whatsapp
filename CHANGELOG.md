@@ -1,5 +1,6 @@
 # Changelog
 
+- Private QA: watched MP4 clips reuse private media capture and the existing speech transcriber; explicit replay retains the original transcript and bytes.
 - Private QA: watched JPEG/PNG/WebP images share document-byte capture, explicit history recovery and idempotent replay.
 
 - Private QA: retain watched TXT/PDF documents and replay recovered originals through the existing source; media downloads share the audio transport validator.
