@@ -82,9 +82,10 @@ export class Policy {
       const events = [];
       let cursor = after;
       for (const row of page.messages) {
-        cursor = row.seq;
         const target = this.target(row, policy, watches);
-        if (target) events.push(this.event(row, target));
+        if (target && row.transcription?.state === 'processing') break;
+        cursor = row.seq;
+        if (target && row.transcription?.state !== 'processing') events.push(this.event(row, target));
         if (events.length === 10) break;
       }
       return { cursor, events };
@@ -100,7 +101,7 @@ export class Policy {
         const page = await this.store.messages(Number(id) - 1, 1);
         const row = page.messages[0];
         const target = row?.seq === Number(id) && this.target(row, policy, watches);
-        if (target) events.push(this.event(row, target));
+        if (target && row.transcription?.state !== 'processing') events.push(this.event(row, target));
       }
       return { events };
     });

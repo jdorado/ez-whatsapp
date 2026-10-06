@@ -3,6 +3,7 @@ WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@10.30.3 --activate
 COPY package.json pnpm-workspace.yaml ./
 COPY docker/pnpm-lock.yaml ./pnpm-lock.yaml
+COPY patches ./patches
 RUN pnpm install --frozen-lockfile --ignore-scripts
 COPY . .
 FROM dependencies AS test

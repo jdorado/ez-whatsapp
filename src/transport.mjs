@@ -148,8 +148,12 @@ export async function createTransport(store, lib = baileys, options = {}) {
       for (const message of batch.messages) {
         const row = normalize(message, lib.normalizeMessageContent, batch.type);
         if (row && !await store.hasMessage(row)) {
-          const captured = await audio.capture(message, row, () => current === socket && !stopped && status.connected);
-          await store.ingest(captured);
+          const stillCurrent = () => current === socket && !stopped && status.connected;
+          if (await audio.processing(row, stillCurrent)) {
+            await store.ingest({ ...row, transcription: { state: 'processing' } });
+            const captured = await audio.capture(message, await store.readMessage(row), stillCurrent);
+            await store.updateMessage({ ...captured, transcription: captured.transcription?.state === 'processing' ? { state: 'skipped' } : captured.transcription });
+          } else await store.ingest(await audio.capture(message, row, stillCurrent));
         }
         if (message.key?.fromMe && message.key.id) await api.onReceipt(message.key.id, 'accepted');
       }

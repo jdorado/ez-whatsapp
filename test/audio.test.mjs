@@ -92,3 +92,34 @@ test('real provider event path deduplicates speech and dispatches transcript thr
   assert.equal(content.type, 'audioMessage'); assert.equal(content.text, 'El proveedor llegó tarde.');
   assert.equal(content.transcription.state, 'transcribed');
 });
+test('processing audio is durable but not dispatched; restart marks interrupted without retry', async t => {
+  const f = await fixture(t);
+  await f.store.ingest({ ...row(), transcription: { state: 'processing' } });
+  assert.deepEqual(await f.policy.events(), { cursor: 0, events: [] });
+  assert.deepEqual(await f.policy.check(['1']), { events: [] });
+  await new Audio(f.store, f.lib, f.fetch).init();
+  const events = await f.policy.events();
+  assert.equal(events.cursor, 1);
+  assert.equal(JSON.parse(events.events[0].text).transcription.code, 'TRANSCRIPTION_INTERRUPTED');
+  assert.deepEqual(f.counts(), { downloads: 0, requests: 0 });
+});
+test('installed Baileys forwards download cancellation and propagates upstream body errors', { timeout: 2000 }, async t => {
+  const original = globalThis.fetch;
+  t.after(() => { globalThis.fetch = original; });
+  globalThis.fetch = async (_url, options) => new Promise((_resolve, reject) => {
+    assert.equal(options.redirect, 'error');
+    options.signal.addEventListener('abort', () => reject(options.signal.reason), { once: true });
+  });
+  await assert.rejects(baileys.getHttpStream('https://mmg.whatsapp.net/audio', { signal: AbortSignal.timeout(50), redirect: 'error' }));
+  let cancelled = false;
+  globalThis.fetch = async (_url, options) => new Response(new ReadableStream({
+    start(controller) { options.signal.addEventListener('abort', () => controller.error(new Error('fixture upstream failure')), { once: true }); },
+    cancel() { cancelled = true; }
+  }));
+  const stream = await baileys.downloadEncryptedContent('https://mmg.whatsapp.net/audio', { cipherKey: Buffer.alloc(32), iv: Buffer.alloc(16) }, { options: { signal: AbortSignal.timeout(50) } });
+  await assert.rejects(async () => { for await (const _chunk of stream) {} }, /fixture upstream failure/);
+  const oversized = await baileys.downloadEncryptedContent('https://mmg.whatsapp.net/audio', { cipherKey: Buffer.alloc(32), iv: Buffer.alloc(16) }, { options: { signal: new AbortController().signal } });
+  oversized.destroy();
+  await new Promise(resolve => setTimeout(resolve, 20));
+  assert.equal(cancelled, true);
+});

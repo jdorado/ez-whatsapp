@@ -1,7 +1,12 @@
-# Hold third-party updates for seven days; reviewed first-party releases are exempt.
-minimumReleaseAge: 10080
-minimumReleaseAgeExclude:
-  - "@jc_stack/*"
-  - "@aifit/*"
-trustPolicy: no-downgrade
 blockExoticSubdeps: true
+
+minimumReleaseAge: 10080
+
+minimumReleaseAgeExclude:
+  - '@jc_stack/*'
+  - '@aifit/*'
+
+patchedDependencies:
+  '@whiskeysockets/baileys@7.0.0-rc14': patches/@whiskeysockets__baileys@7.0.0-rc14.patch
+
+trustPolicy: no-downgrade

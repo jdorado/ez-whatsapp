@@ -14,6 +14,15 @@ export class Audio {
   async init() {
     this.config = await readJSON(this.store.path('audio-config.json'), null);
     if (this.config) this.validate(this.config);
+    // A service restart does not retry a possibly accepted provider request.
+    let after = 0;
+    for (;;) {
+      const page = await this.store.messages(after, 100);
+      for (const row of page.messages) if (row.transcription?.state === 'processing')
+        await this.store.updateMessage({ ...row, transcription: { state: 'failed', code: 'TRANSCRIPTION_INTERRUPTED' } });
+      if (!page.hasMore) break;
+      after = page.nextCursor;
+    }
   }
   validate(value) {
     if (!value || Object.keys(value).some(k => k !== 'geminiApiKey') ||
@@ -31,7 +40,10 @@ export class Audio {
   async target(row) {
     const policy = await this.policy.get();
     const watches = await readJSON(this.store.path('task-watches.json'), {});
-    return this.policy.target({ ...row, seq: await this.policy.head() + 1 }, policy, watches);
+    return this.policy.target({ ...row, seq: row.seq ?? await this.policy.head() + 1 }, policy, watches);
+  }
+  async processing(row, stillCurrent) {
+    return Boolean(this.config && !row.fromMe && row.type === 'audioMessage' && stillCurrent() && await this.target(row));
   }
   async capture(message, row, stillCurrent = () => true) {
     if (row.fromMe || row.type !== 'audioMessage' || !stillCurrent() || !await this.target(row)) return row;
@@ -56,7 +68,7 @@ export class Audio {
     } catch { return { ...row, transcription: { state: 'failed', code: 'AUDIO_SOURCE_INVALID' } }; }
     let bytes, stream;
     try {
-      stream = await this.lib.downloadContentFromMessage(audio, 'audio', { options: { signal: AbortSignal.timeout(20000) } });
+      stream = await this.lib.downloadContentFromMessage(audio, 'audio', { options: { signal: AbortSignal.timeout(20000), redirect: 'error' } });
       const chunks = []; let size = 0;
       for await (const chunk of stream) {
         size += chunk.length;
