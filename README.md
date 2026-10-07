@@ -245,8 +245,9 @@ ezenciel-agents-source --name whatsapp --socket /plugins/whatsapp/service.sock
 Run with the intended relay control directory (`EZ_CONTROL_DIR`). Registration
 requires its paired owner, skips existing backlog and persists across executor
 changes. The host polls, batches per conversation, and queues through its single
-writer. It rechecks subscription immediately before dispatch and starts a fresh
-executor session. Other CLI/GUI hosts can use the same local socket contract or
+writer. It rechecks subscription immediately before dispatch. Execution additionally
+requires an active scoped core task; an ordinary subscription alone cannot run
+the agent or reply. Other CLI/GUI hosts can use the same local socket contract or
 read inbox explicitly; installing this plugin alone does not wake their agents.
 
 ## License
@@ -274,9 +275,16 @@ expected linked account before dispatch and returns a contact/account/key-bound
 acceptance receipt. Account changes, group targets and noncanonical IDs fail
 closed. Accepted is not recipient delivery.
 
-The main core owns owner approval, purpose/context, expiry, message limits and
+The main core owns owner authority, purpose/context, expiry, message limits and
 revocation. This adapter owns provider identity, capture and send receipts; it
 cannot grant authority. Use a task-aware main version for autonomous replies.
+For a job already authorized by the owner's request, use the core's
+`ezenciel-agents-task start` with the exact contact, shareable context and expiry.
+It activates the bounded grant without asking for the same permission again.
+Use `--incoming-only` when no opener is authorized; otherwise the task owns the
+opening inquiry and follow-up. `propose` remains available for scope that needs
+a new owner decision. Check the installed core's help for `start` support before
+using it. An older core needs an upgrade for this path, not a broader subscription.
 Older cores continue to use existing manual commands/events. No live messaging
 is exercised by routine tests.
 ### Multiple numbers and purposes

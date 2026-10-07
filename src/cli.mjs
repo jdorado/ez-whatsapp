@@ -19,7 +19,7 @@ export const help = `ez-whatsapp — standalone WhatsApp account plugin
   document-replay --chat JID --seq CAPTURED_SEQ (explicit replay of retained TXT/PDF/image/video)
   history-status Latest request for this account (partial coverage; no automatic retry)
   policy     Read wake policy, or set --mode manual|selected|all
-  subscribe  Watch new incoming messages in --chat JID
+  subscribe  Select new-message events in --chat JID (no reply-execution grant)
   unsubscribe Stop watching --chat JID (capture continues)
   verify     Check recipient: --to +COUNTRYNUMBER|JID
   send       --to NUMBER|JID --text-file FILE [--audio-file OGG_OPUS_FILE] --idempotency-key KEY [--preview]
@@ -35,6 +35,8 @@ setup returns a private QR PNG: share it with the owner, who scans in WhatsApp
 Settings > Linked Devices. Poll doctor for connected=true; scanning alone is not proof.
 Start the registered plugin with ez plugins start whatsapp before setup.
 Account must already exist. Onboarding never sends a WhatsApp message.
+Subscriptions select events only. Ez autonomous replies require a scoped core
+task: see ezenciel-agents-task --help and this plugin's Monitoring skill section.
 `;
 export async function main(argv = process.argv.slice(2)) {
   process.umask(0o077);
