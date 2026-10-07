@@ -28,12 +28,13 @@
     "CONTRIBUTING.md",
     "scripts/release-check.mjs",
     ".dockerignore",
-    "LICENSE-MIT"
+    "LICENSE-MIT",
+    "pnpm-workspace.yaml"
   ],
   "scripts": {
     "test": "node --test",
     "verify": "node --test && node --check src/cli.mjs",
-    "prepublishOnly": "npm run verify",
+    "prepublishOnly": "pnpm run verify",
     "smoke:docker": "node docker/smoke.mjs",
     "release:check": "node scripts/release-check.mjs"
   },
