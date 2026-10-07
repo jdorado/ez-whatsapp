@@ -37,6 +37,18 @@ export class Store {
   serial(fn) { const next = this.queue.then(fn); this.queue = next.catch(() => {}); return next; }
   async operation(key) { return readJSON(this.path(`operations/${hash(key)}.json`), null); }
   async saveOperation(op) { await writeJSON(this.path(`operations/${hash(op.key)}.json`), op); }
+  async hasMessage(message) {
+    return Boolean(await this.readMessage(message));
+  }
+  messagePath(message) { return this.path(`messages/${hash(JSON.stringify([message.chat, message.id, message.fromMe, message.participant]))}.json`); }
+  async readMessage(message) { return readJSON(this.messagePath(message), null); }
+  async updateMessage(message) {
+    return this.serial(async () => {
+      const old = await this.readMessage(message);
+      if (!old) throw fail('NOT_FOUND', 'Captured message is missing');
+      await writeJSON(this.messagePath(message), { ...message, seq: old.seq, capturedAt: old.capturedAt });
+    });
+  }
   async ingest(message) {
     return this.serial(async () => {
       const id = hash(JSON.stringify([message.chat, message.id, message.fromMe, message.participant]));

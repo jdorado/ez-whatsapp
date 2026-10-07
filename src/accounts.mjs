@@ -3,7 +3,7 @@ import { fail, privateDir, readJSON, writeJSON } from './store.mjs';
 
 const validName = name => typeof name === 'string' && /^[a-z][a-z0-9_-]{0,31}$/.test(name);
 const validPurpose = purpose => typeof purpose === 'string' && purpose.length <= 240;
-const sourceCommands = new Set(['events-head', 'events', 'events-check', 'task-watch', 'task-unwatch', 'task-send']);
+const sourceCommands = new Set(['events-head', 'events', 'events-check', 'task-watch', 'task-unwatch', 'task-send', 'task-document']);
 
 // One Docker lifecycle; each named account reuses the existing isolated service.
 export class Accounts {

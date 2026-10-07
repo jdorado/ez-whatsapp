@@ -4,7 +4,7 @@ import { recipient, normalize } from './messages.mjs';
 
 // One bounded, explicit request per account. No polling, retries or wakeups.
 export class History {
-  constructor(store) { this.store = store; this.queue = Promise.resolve(); }
+  constructor(store, capture) { this.capture = capture; this.store = store; this.queue = Promise.resolve(); }
   serial(fn) { const next = this.queue.then(fn); this.queue = next.catch(() => {}); return next; }
   async status() {
     const value = await readJSON(this.store.path('history-request.json'), null);
@@ -45,10 +45,14 @@ export class History {
       const value = await this.status();
       if (batch.syncType !== onDemandType || !value.sessionId || batch.peerDataRequestSessionId !== value.sessionId ||
           !['requested', 'received'].includes(value.state) || Date.now() >= value.expiresAt) return;
+      let recovered = 0;
       for (const message of batch.messages ?? []) {
-        if (value.received >= value.limit) break;
+        if (value.received + recovered >= value.limit) break;
         const row = normalize(message, unwrap, 'history');
-        if (row?.chat === value.chat && await this.store.ingest({ ...row, historyRequestId: value.id })) value.received++;
+        if (row?.chat !== value.chat) continue;
+        const old = await this.store.readMessage(row);
+        if (old && ['documentMessage','imageMessage','videoMessage'].includes(old.type) && old.document?.state !== 'available' && this.capture) { await this.store.updateMessage(await this.capture(message, old)); recovered++; }
+        if (!old && await this.store.ingest({ ...row, historyRequestId: value.id })) value.received++;
       }
       value.state = 'received'; // Provider response, never a complete-export claim.
       value.respondedAt = new Date().toISOString();

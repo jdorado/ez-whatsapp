@@ -377,3 +377,17 @@ test('unlinked failure stops until explicit setup; connected auth retains reconn
   const terminalCount = sockets.length; await transport.setup();
   assert.equal(sockets.length, terminalCount, 'Setup does not bypass revoked authentication repair');
 });
+
+test('spoken task sends validate Ogg Opus, preserve identity and bind audio to the existing receipt key', async t => {
+  const f=await fixture(t);let received;
+  f.transport.send=async (_jid,_text,id,_account,audio) => { received=audio;return {id}; };
+  const audio=Buffer.from('OggSfixture OpusHead');
+  const args={accountId:'15551230000@s.whatsapp.net',conversationId:'15551234567@s.whatsapp.net',text:'Spoken fixture',key:'voice-reply',audio:{data:audio.toString('base64'),mimeType:'audio/ogg'}};
+  assert.equal((await f.service.call('events-head')).taskVoice,true);
+  const result=await f.service.call('task-send',args);assert.equal(result.state,'accepted');assert.deepEqual(received,audio);
+  const op=await f.service.call('operation',{key:args.key});assert.equal(op.audio.bytes,audio.length);assert.equal(op.audio.mimeType,'audio/ogg');
+  await f.service.call('task-send',args);
+  await assert.rejects(f.service.call('task-send',{...args,audio:undefined}),{code:'KEY_CONFLICT'});
+  await assert.rejects(f.service.call('task-send',{...args,key:'bad',audio:{data:'aHR0cHM6Ly9sb2NhbGhvc3Q=',mimeType:'audio/ogg'}}),{code:'INVALID_INPUT'});
+  await assert.rejects(f.service.call('task-send',{...args,key:'bad',audio:{...args.audio,url:'https://localhost'}}),{code:'INVALID_INPUT'});
+});

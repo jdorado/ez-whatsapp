@@ -51,3 +51,13 @@ test('corrupt policy and invalid cursors fail closed; batches remain bounded', a
   await assert.rejects(policy.events(-1)); await assert.rejects(policy.check(['../secret']));
   await writeFile(store.path('policy.json'), '{'); await assert.rejects(policy.events(), { code: 'CORRUPT_STATE' });
 });
+
+test('video transcript and escaped caption fit the source event bound without losing private capture',async t=>{
+  const {store,policy,capture}=await fixture(t);await policy.watch(a,Date.now()+3600000);
+  const text='\n'.repeat(10000),caption='\"'.repeat(12000);
+  await capture(a,{type:'videoMessage',text,caption,document:{state:'available',name:'video.mp4',bytes:20,sha256:'a'.repeat(64)},transcription:{state:'transcribed'}});
+  const event=(await policy.events()).events[0];assert.ok(event.text.length<=16000);
+  const content=JSON.parse(event.text);assert.equal(content.truncated,true);assert.ok(content.text.length>0);assert.ok(content.caption.length>0);
+  const original=(await store.messages()).messages[0];assert.equal(original.text,text);assert.equal(original.caption,caption);
+  assert.equal((await policy.check([event.id])).events[0].text,event.text);
+});

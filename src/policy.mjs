@@ -59,7 +59,7 @@ export class Policy {
     // a phone watch. Never infer identity from message text or group members.
     const chats = /^\d+@lid$/.test(row.chat) && /^\d{7,15}@s\.whatsapp\.net$/.test(row.phoneJid)
       ? [row.phoneJid, row.chat] : [row.chat];
-    const eligible = floor => floor && !row.fromMe && ['notify', 'append'].includes(row.source) &&
+    const eligible = floor => floor && !row.fromMe && ['notify', 'append', 'replay'].includes(row.source) &&
       row.seq > floor.seq && Number.isFinite(row.timestamp) && row.timestamp * 1000 >= floor.at - 1000;
     // Explicit task attention wins over broad inbox attention, so an all-mode
     // fallback cannot rename an event away from its approved task contact.
@@ -69,8 +69,24 @@ export class Policy {
   }
   eligible(row, policy, watches = {}) { return Boolean(this.target(row, policy, watches)); }
   event(row, conversationId = row.chat) {
-    return { id: String(row.seq), conversationId, receivedAt: Date.parse(row.capturedAt),
-      text: JSON.stringify({ messageId: row.id, participant: row.participant, type: row.type, text: row.text?.slice(0, 10000) ?? null, mediaAvailable: row.mediaAvailable ?? false }) };
+    const payload={ messageId: row.id, participant: row.participant, type: row.type, text: row.text?.slice(0,10000) ?? null, mediaAvailable: row.mediaAvailable ?? false,
+      ...(row.transcription ? {transcription:row.transcription} : {}), ...(row.document ? {document:row.document} : {}), ...(row.replayOf ? {replayOf:row.replayOf} : {}), ...(row.caption ? {caption:row.caption} : {}) };
+    // The source protocol bounds serialized event text, including JSON escapes.
+    // Preserve complete content in private capture; truncate only this delivery.
+    if (JSON.stringify(payload).length > 16000) {
+      payload.truncated=true;
+      const text=payload.text ?? '', caption=payload.caption ?? '';
+      payload.text='';if (payload.caption) payload.caption='';
+      const budget=16000-JSON.stringify(payload).length;
+      const prefix=(value,limit)=>{
+        let low=0,high=value.length;
+        while(low<high){const mid=Math.ceil((low+high)/2);if(JSON.stringify(value.slice(0,mid)).length-2<=limit)low=mid;else high=mid-1;}
+        return value.slice(0,low);
+      };
+      if (caption) payload.caption=prefix(caption,Math.min(3000,budget));
+      payload.text=prefix(text,Math.max(0,budget-(JSON.stringify(payload.caption ?? '').length-2)));
+    }
+    return {id:String(row.seq),conversationId,receivedAt:Date.parse(row.capturedAt),text:JSON.stringify(payload)};
   }
   async events(after = 0) {
     if (!Number.isSafeInteger(after) || after < 0) throw fail('INVALID_INPUT', 'Invalid event cursor');
@@ -81,9 +97,10 @@ export class Policy {
       const events = [];
       let cursor = after;
       for (const row of page.messages) {
-        cursor = row.seq;
         const target = this.target(row, policy, watches);
-        if (target) events.push(this.event(row, target));
+        if (target && (row.transcription?.state === 'processing' || row.document?.state === 'processing')) break;
+        cursor = row.seq;
+        if (target && (row.transcription?.state !== 'processing' && row.document?.state !== 'processing')) events.push(this.event(row, target));
         if (events.length === 10) break;
       }
       return { cursor, events };
@@ -99,7 +116,7 @@ export class Policy {
         const page = await this.store.messages(Number(id) - 1, 1);
         const row = page.messages[0];
         const target = row?.seq === Number(id) && this.target(row, policy, watches);
-        if (target) events.push(this.event(row, target));
+        if (target && (row.transcription?.state !== 'processing' && row.document?.state !== 'processing')) events.push(this.event(row, target));
       }
       return { events };
     });

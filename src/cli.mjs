@@ -1,7 +1,7 @@
 import { parseArgs } from 'node:util';
 import { resolve, isAbsolute } from 'node:path';
 import { existsSync } from 'node:fs';
-import { readFile } from 'node:fs/promises';
+import { stat, readFile } from 'node:fs/promises';
 import { client } from './client.mjs';
 import { fail } from './store.mjs';
 export const help = `ez-whatsapp — standalone WhatsApp account plugin
@@ -13,14 +13,16 @@ export const help = `ez-whatsapp — standalone WhatsApp account plugin
   serve      Foreground socket service (captures messages; no agent execution)
   repair     Replace revoked (401) authentication; preserve pinned identity and records
   doctor     Live connection identity, QR image path, capabilities
+  audio-configure Private JSON stdin: {"geminiApiKey":"..."}; enables voice-note transcription for watched chats
   inbox      Captured messages: --after CURSOR --limit 1..100 [--chat JID]
   history    Request older messages: --chat JID --before CAPTURED_SEQ --limit 1..50
+  document-replay --chat JID --seq CAPTURED_SEQ (explicit replay of retained TXT/PDF/image/video)
   history-status Latest request for this account (partial coverage; no automatic retry)
   policy     Read wake policy, or set --mode manual|selected|all
   subscribe  Select new-message events in --chat JID (no reply-execution grant)
   unsubscribe Stop watching --chat JID (capture continues)
   verify     Check recipient: --to +COUNTRYNUMBER|JID
-  send       --to NUMBER|JID --text-file FILE --idempotency-key KEY [--preview]
+  send       --to NUMBER|JID --text-file FILE [--audio-file OGG_OPUS_FILE] --idempotency-key KEY [--preview]
   operation  --idempotency-key KEY (inspect acceptance/delivery/uncertainty)
 
 Use --profile /absolute/private/directory, or --socket /absolute/service.sock
@@ -40,7 +42,7 @@ export async function main(argv = process.argv.slice(2)) {
   process.umask(0o077);
   try {
     const { values: v, positionals } = parseArgs({ args: argv, allowPositionals: true, options: Object.fromEntries([
-      ...['profile','socket','to','text-file','idempotency-key','after','before','limit','chat','mode','account','purpose'].map(k => [k, { type: 'string' }]),
+      ...['profile','socket','to','text-file','audio-file','idempotency-key','after','before','seq','limit','chat','mode','account','purpose'].map(k => [k, { type: 'string' }]),
       ...['help','version','json','preview'].map(k => [k, { type: 'boolean' }])
     ]) });
     if (v.help || (!positionals.length && !v.version)) { process.stdout.write(help); return; }
@@ -63,16 +65,26 @@ export async function main(argv = process.argv.slice(2)) {
       return;
     }
     let result;
-    if (command === 'setup') {
+    if (command === 'audio-configure') {
+      let input = '';
+      for await (const chunk of process.stdin) { input += chunk; if (Buffer.byteLength(input) > 4096) throw fail('INVALID_INPUT', 'Audio configuration is too large'); }
+      let config; try { config = JSON.parse(input); } catch { throw fail('INVALID_INPUT', 'Supply audio configuration as private JSON stdin'); }
+      result = await client(profile, command, { account: v.account, config }, v.socket);
+    } else if (command === 'setup') {
       result = await client(profile, 'setup', { account: v.account }, v.socket);
       result = { ...result, next: 'Scan the current QR if needed, then verify connected identity with doctor' };
     } else {
-      if (!['accounts','account-add','qr','repair','doctor','inbox','history','history-status','send','verify','operation','policy','subscribe','unsubscribe'].includes(command)) throw fail('INVALID_INPUT', 'Unknown command; use --help');
+      if (!['accounts','account-add','qr','repair','doctor','inbox','document-replay','history','history-status','send','verify','operation','policy','subscribe','unsubscribe'].includes(command)) throw fail('INVALID_INPUT', 'Unknown command; use --help');
       const args = { account: v.account, purpose: v.purpose, mode: v.mode, to: v.to, key: v['idempotency-key'], preview: v.preview, after: v.after === undefined ? 0 : Number(v.after), limit: v.limit === undefined ? 20 : Number(v.limit), chat: v.chat };
+      if (v.seq !== undefined) args.seq = Number(v.seq);
       if (v.before !== undefined) args.before = Number(v.before);
       if (command === 'send') {
         if (!v['text-file']) throw fail('INVALID_INPUT', 'Supply --text-file');
         args.text = await readFile(v['text-file'], 'utf8');
+        if (v['audio-file']) {
+          const info = await stat(v['audio-file']); if (!info.isFile() || info.size > 256000) throw fail('INVALID_INPUT', 'Voice file exceeds limit');
+          args.audio = { data: (await readFile(v['audio-file'])).toString('base64'), mimeType: 'audio/ogg' };
+        }
       }
       result = await client(profile, command, args, v.socket);
     }

@@ -5,10 +5,16 @@ import { unlink } from 'node:fs/promises';
 import { authState } from './auth.mjs';
 import { normalize } from './messages.mjs';
 import { History } from './history.mjs';
+import { Documents } from './documents.mjs';
+import { Audio } from './audio.mjs';
 import { atomic, fail, readJSON, writeJSON, privateDir, hash } from './store.mjs';
 
-export async function createTransport(store, lib = baileys) {
-  const history = new History(store);
+export async function createTransport(store, lib = baileys, options = {}) {
+  const audio = new Audio(store, lib, options.fetch);
+  await audio.init();
+  const documents = new Documents(store, lib, (bytes,mime) => audio.transcribe(bytes,mime));
+  await documents.init();
+  const history = new History(store, async (message, row) => documents.capture(message, row, () => !stopped && status.connected, true));
   let auth = await authState(store.dir, lib);
   await privateDir(store.path('outgoing'));
   const logger = pino({ level: 'silent' });
@@ -21,7 +27,8 @@ export async function createTransport(store, lib = baileys) {
   const enqueue = fn => { events = events.then(fn).catch(fatal); };
   const api = {
     onReceipt: async () => {},
-    status: () => ({ ...status, ...(status.qrPath ? { qrAgeMs: Date.now() - Date.parse(status.qrCreatedAt), qrRemainingMs: Math.max(0, Date.parse(status.qrCreatedAt) + status.qrRefreshAfterMs - Date.now()) } : {}) }),
+    status: () => ({ ...status, audio: audio.status(), ...(status.qrPath ? { qrAgeMs: Date.now() - Date.parse(status.qrCreatedAt), qrRemainingMs: Math.max(0, Date.parse(status.qrCreatedAt) + status.qrRefreshAfterMs - Date.now()) } : {}) }),
+    audioConfigure: value => audio.configure(value),
     async start() { await removeQR(); connect(); },
     async setup() {
       await events;
@@ -32,6 +39,8 @@ export async function createTransport(store, lib = baileys) {
       return api.status();
     },
     async close() { stopped = true; clearTimeout(timer); socket?.end(undefined); await events; await history.queue; await auth.flush(); await removeQR(); },
+    documentRead: row => documents.read(row),
+    documentReplay: (chat, seq) => documents.replay(chat, seq),
     historyStatus: () => history.status(),
     async historyRequest(args) {
       if (stopped || !status.connected) throw fail('UNAVAILABLE', 'WhatsApp must be connected to request history');
@@ -75,11 +84,12 @@ export async function createTransport(store, lib = baileys) {
       const result = await socket.onWhatsApp(jid);
       return { exists: result?.[0]?.exists === true, jid: result?.[0]?.jid ?? jid, kind: 'phone' };
     },
-    async send(jid, text, messageId, expectedAccount) {
+    async send(jid, text, messageId, expectedAccount, audio) {
       // Provider protocol resend requests need the original payload, not another user send.
-      await writeJSON(store.path(`outgoing/${hash(messageId)}.json`), { conversation: text });
+      await writeJSON(store.path(`outgoing/${hash(messageId)}.json`), audio ? {} : { conversation: text });
       if (expectedAccount && (!status.connected || status.account?.jid !== expectedAccount)) throw fail('ACCOUNT_MISMATCH', 'Task account changed before dispatch');
-      const result = await socket.sendMessage(jid, { text }, { messageId });
+      const result = await socket.sendMessage(jid, audio ? { audio, mimetype: 'audio/ogg; codecs=opus', ptt: true } : { text }, { messageId });
+      if (audio && result?.message) await writeJSON(store.path(`outgoing/${hash(messageId)}.json`), result.message);
       return { id: result?.key?.id };
     }
   };
@@ -143,7 +153,18 @@ export async function createTransport(store, lib = baileys) {
       if (current !== socket || stopped) return;
       for (const message of batch.messages) {
         const row = normalize(message, lib.normalizeMessageContent, batch.type);
-        if (row) await store.ingest(row);
+        if (row && !await store.hasMessage(row)) {
+          const stillCurrent = () => current === socket && !stopped && status.connected;
+          if (await audio.processing(row, stillCurrent)) {
+            await store.ingest({ ...row, transcription: { state: 'processing' } });
+            const captured = await audio.capture(message, await store.readMessage(row), stillCurrent);
+            await store.updateMessage({ ...captured, transcription: captured.transcription?.state === 'processing' ? { state: 'skipped' } : captured.transcription });
+          } else if (['documentMessage','imageMessage','videoMessage'].includes(row.type) && !row.fromMe && await documents.target(row)) {
+            await store.ingest({ ...row, document: { state: 'processing' } });
+            const captured = await documents.capture(message, await store.readMessage(row), stillCurrent);
+            await store.updateMessage({ ...captured, document: captured.document?.state === 'processing' ? { state: 'failed', code: 'DOCUMENT_CAPTURE_CANCELLED' } : captured.document });
+          } else await store.ingest(await audio.capture(message, row, stillCurrent));
+        }
         if (message.key?.fromMe && message.key.id) await api.onReceipt(message.key.id, 'accepted');
       }
     }));
