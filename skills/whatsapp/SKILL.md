@@ -138,15 +138,19 @@ execution. The core owns that grant; this plugin cannot approve it.
 
 On a requested reply mandate, read the current installed
 `ezenciel-agents-task --help`, complete the relay socket/source connection, and
-propose the contact-scoped task for the required core confirmation. Outbound
-jobs such as bookings use `propose` without `--incoming-only` to initiate the
+start the contact-scoped task under the owner's existing authority with
+`ezenciel-agents-task start`. This records the grant and activates its watch
+without a second approval. Use `propose` only when a new owner decision is needed
+for scope beyond the request. If the installed core lacks `start`, report the
+version gap; a subscription cannot substitute for the grant.
+Outbound jobs such as bookings use `start` without `--incoming-only` to initiate the
 inquiry and follow up. Use `--incoming-only` only when asked to wait for their
 message and then answer.
 Do not stop after saying the connection is missing. Complete technical setup
 within the existing request; ask only for a genuinely missing identity, QR scan
-or required confirmation. Do not re-pair an existing connection.
+or decision beyond the existing request. Do not re-pair an existing connection.
 
-Report active only after source readback, core approval and matching task watch.
+Report active only after source readback, an active core grant and matching task watch.
 Explain v1 expiry instead of promising indefinite replies. Unmatched contacts
 must not wake an owner-authority session. Never substitute all mode, a scheduled
 unrestricted inbox poll, or manual CLI sends to bypass the core task boundary.
@@ -167,8 +171,8 @@ person messages” means an incoming-only task with no opener. “Keep the messa
 for me” means quiet capture. Only when intent is unclear ask one short question:
 “Should I reply for you, or just keep the messages for you to review?”
 
-The core may still require confirmation of the concrete scope; avoid a separate
-mode-selection questionnaire. Keep expiry and disclosure limits in that proposal.
+An explicit job authorizes its scoped follow-up; do not request the same
+permission again. Keep expiry and disclosure limits in the task context.
 Do not promise blanket or indefinite automatic replies beyond the core grant.
 
 ## Repair a revoked session
