@@ -202,8 +202,9 @@ Spoken replies: core task `send` may use `voice: true` when available. Core gene
 
 Watched incoming TXT/Markdown/PDF, JPEG/PNG/WebP images and MP4 videos retain up to 10 MiB of private provider-downloaded
 bytes with their filename, byte count and SHA-256 in `inbox`. The approved
-restricted task reads them through core's shared attachment validation and
-bounded `read_attachment` tool. Images are passed to native vision as pixels;
+restricted task can read them when the installed core supports `task-document`
+and its bounded `read_attachment` tool. Check the installed core's tool help;
+older cores need an upgrade for task attachment reading. Images are passed to native vision as pixels;
 no image model or parser is called by the plugin. MP4 clips are limited to 120 seconds. Core supplies at most eight sampled JPEG frames (640 pixels wide, 1 MiB combined); the existing configured speech transcriber supplies the spoken transcript with its provider receipt. The native CLI accepts text and images, so it receives frames and transcript rather than raw video/audio. This does not analyze every motion or nonspeech sound. All files remain untrusted input. Unsupported,
 oversized or failed downloads report their state; there is no automatic retry.
 

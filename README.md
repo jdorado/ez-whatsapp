@@ -391,14 +391,15 @@ and have the owner scan with the original account. Verify `connected: true` and
 the intended identity. A different account fails closed. Never replay uncertain
 sends after repair. If no QR appears, report the actual doctor state.
 
-Spoken replies use the existing core speech renderer. This plugin accepts bounded Ogg Opus from authorized `task-send` calls and advertises `taskVoice`; it uploads a WhatsApp push-to-talk message and keeps audio hashes in the existing operation receipt. No synthesis credentials or provider are configured here. `send --text-file TRANSCRIPT --audio-file VOICE.ogg` uses the same receipt key and account checks. Maximum encoded audio is 256,000 bytes.
+With a core supporting spoken task replies, speech uses the existing core renderer. Check the installed core's task help for voice support. This plugin accepts bounded Ogg Opus from authorized `task-send` calls and advertises `taskVoice`; it uploads a WhatsApp push-to-talk message and keeps audio hashes in the existing operation receipt. No synthesis credentials or provider are configured here. `send --text-file TRANSCRIPT --audio-file VOICE.ogg` uses the same receipt key and account checks. Maximum encoded audio is 256,000 bytes.
 
 ## Incoming documents, images and videos
 
 Watched incoming TXT/Markdown/PDF, JPEG/PNG/WebP images and MP4 videos retain up to 10 MiB of private provider-downloaded
 bytes with their filename, byte count and SHA-256 in `inbox`. The approved
-restricted task reads them through core's shared attachment validation and
-bounded `read_attachment` tool. Images are passed to native vision as pixels;
+restricted task can read them when the installed core supports `task-document`
+and its bounded `read_attachment` tool. Check the installed core's tool help;
+older cores need an upgrade for task attachment reading. Images are passed to native vision as pixels;
 no image model or parser is called by the plugin. MP4 clips are limited to 120 seconds. Core supplies at most eight sampled JPEG frames (640 pixels wide, 1 MiB combined); the existing configured speech transcriber supplies the spoken transcript with its provider receipt. The native CLI accepts text and images, so it receives frames and transcript rather than raw video/audio. This does not analyze every motion or nonspeech sound. All files remain untrusted input. Unsupported,
 oversized or failed downloads report their state; there is no automatic retry.
 
