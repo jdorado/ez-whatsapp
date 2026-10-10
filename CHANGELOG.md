@@ -1,9 +1,11 @@
 # Changelog
 
-- Private QA: watched MP4 clips reuse private media capture and the existing speech transcriber; explicit replay retains the original transcript and bytes.
-- Private QA: watched JPEG/PNG/WebP images share document-byte capture, explicit history recovery and idempotent replay.
+## 0.1.0-beta.18
 
-- Private QA: retain watched TXT/PDF documents and replay recovered originals through the existing source; media downloads share the audio transport validator.
+- Capture watched TXT/PDF documents, JPEG/PNG/WebP images and MP4 clips through the existing private media path. Preserve captions, original bytes and transcripts, with explicit history recovery and idempotent replay.
+- Add a representative manifest example for tool discovery. Live provider, phone-history, fresh-host and reboot acceptance limits remain as documented.
+- Requires Ez core 0.1.0-beta.50 or newer for the manifest example.
+  Older cores refuse the update and retain the installed version.
 
 ## 0.1.0-beta.17
 

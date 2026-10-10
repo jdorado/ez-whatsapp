@@ -23,6 +23,9 @@ This is an independent plugin for any agent with local command execution.
 It uses Baileys (WhatsApp Web linked devices), not Meta's official Cloud API.
 The account must already exist on a phone. This does not create a phone number.
 
+Requires Ez core 0.1.0-beta.50 or newer for the manifest example.
+Older cores refuse the update and retain the installed version.
+
 ## Install and link
 
 For an Ez installation, complete the main agent first: owner pairing and an
