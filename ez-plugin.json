@@ -3,6 +3,7 @@
   "id": "whatsapp",
   "version": "0.1.0-beta.18.rc.13",
   "description": "Link a WhatsApp account, capture incoming messages and send text",
+  "example": "whatsapp inbox --after 0 --limit 20",
   "commands": {
     "whatsapp": {
       "executable": "bin/ez-whatsapp.mjs",
