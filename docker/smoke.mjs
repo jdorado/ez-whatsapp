@@ -8,7 +8,7 @@ const docker = args => spawnSync('docker', args, {encoding:'utf8', timeout:60000
 const ok = args => {const r=docker(args);assert.equal(r.status,0,r.stderr || r.stdout);return r.stdout.trim();};
 const mounts = ['-v',`${volumes[0]}:/state/whatsapp`,'-v',`${volumes[1]}:/plugins/whatsapp`,'-v',`${volumes[2]}:/client`];
 const fixture = ['--mount',`type=bind,src=${fileURLToPath(new URL('./fixture.mjs',import.meta.url))},dst=/app/src/transport.mjs,readonly`];
-const call = args => JSON.parse(ok(['run','--rm','--user','1000:1000','-v',`${volumes[1]}:/plugins/whatsapp:ro`,'-v',`${volumes[2]}:/client:ro`,'--entrypoint','node','node:22.22.0-bookworm-slim','/client/bin/ez-whatsapp',...args,'--socket','/plugins/whatsapp/service.sock'])).data;
+const call = args => JSON.parse(ok(['run','--rm','--user','1000:1000','-v',`${volumes[1]}:/plugins/whatsapp:ro`,'-v',`${volumes[2]}:/client:ro`,'--entrypoint','node','node:22.23.4-bookworm-slim@sha256:de170b39439eb0e5a3444ad7d60b015614a381e10fecae2e30ec9e735122f38d','/client/bin/ez-whatsapp',...args,'--socket','/plugins/whatsapp/service.sock'])).data;
 async function ready() {
   for(let n=0;n<40;n++) {
     const r=docker(['exec',id,'node','/app/bin/ez-whatsapp.mjs','doctor','--socket','/plugins/whatsapp/service.sock']);
@@ -38,7 +38,7 @@ try {
   assert.equal(call(['operation','--account','sales','--idempotency-key','docker:qa']).providerMessageId,namedSend.providerMessageId);
   assert.equal(call(['accounts']).accounts.find(a=>a.name==='sales').purpose,'Sales enquiries');
   assert.equal(call(['doctor','--account','sales']).connected,true);
-  const isolated=ok(['run','--rm','--user','1000:1000','-v',`${volumes[1]}:/plugins/whatsapp:ro`,'-v',`${volumes[2]}:/client:ro`,'--entrypoint','node','node:22.22.0-bookworm-slim','-e',`const fs=require('fs');if(fs.existsSync('/state/whatsapp')||fs.existsSync('/var/run/docker.sock'))process.exit(1);console.log('isolated')`]);
+  const isolated=ok(['run','--rm','--user','1000:1000','-v',`${volumes[1]}:/plugins/whatsapp:ro`,'-v',`${volumes[2]}:/client:ro`,'--entrypoint','node','node:22.23.4-bookworm-slim@sha256:de170b39439eb0e5a3444ad7d60b015614a381e10fecae2e30ec9e735122f38d','-e',`const fs=require('fs');if(fs.existsSync('/state/whatsapp')||fs.existsSync('/var/run/docker.sock'))process.exit(1);console.log('isolated')`]);
   assert.equal(isolated,'isolated');
   console.log('Docker smoke passed: separate client/socket, synthetic send receipt, duplicate writer rejected, SIGKILL restart, durable per-account cursors and operations, named account restart, private profile absent from client. No provider calls.');
 } finally {
