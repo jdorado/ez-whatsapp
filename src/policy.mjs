@@ -93,6 +93,7 @@ export class Policy {
     return this.store.serial(async () => {
       const policy = await this.get();
       const watches = await readJSON(this.store.path('task-watches.json'), {});
+      if (after === await this.head()) return { cursor: after, events: [] };
       const page = await this.store.messages(after, 100);
       const events = [];
       let cursor = after;

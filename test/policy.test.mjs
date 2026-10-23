@@ -21,6 +21,23 @@ test('manual captures but emits nothing; selected starts now and matches exact c
   assert.equal(batch.cursor, 3); assert.equal((await store.messages()).messages.length, 3);
   assert.equal((await new Policy(store).get()).mode, 'selected');
 });
+test('caught-up event polls skip history reads and still capture new watched messages', async t => {
+  const { store, policy, capture } = await fixture(t);
+  await capture();
+  const after = await policy.head();
+  const reads = t.mock.method(store, 'messages');
+  assert.deepEqual(await policy.events(after), { cursor: after, events: [] });
+  assert.equal(reads.mock.callCount(), 0);
+  await policy.watch(a, Date.now() + 3600000);
+  await capture();
+  const batch = await policy.events(after);
+  assert.deepEqual(batch.events.map(event => event.id), ['2']);
+  assert.equal(reads.mock.callCount(), 1);
+  assert.deepEqual(await policy.events(batch.cursor), { cursor: batch.cursor, events: [] });
+  assert.equal(reads.mock.callCount(), 1);
+  await writeFile(store.path('policy.json'), '{');
+  await assert.rejects(policy.events(batch.cursor), { code: 'CORRUPT_STATE' });
+});
 test('unsubscribe rechecks queued events; resubscribe excludes old messages and preserves other chats', async t => {
   const { policy, capture } = await fixture(t);
   await policy.change('subscribe', { chat: a }); await policy.change('subscribe', { chat: b });
