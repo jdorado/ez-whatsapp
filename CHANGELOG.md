@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Skip inbox history reads when event polling has reached the capture cursor, so idle polling does not delay task activation behind repeated history scans.
+
 ## 0.1.0-beta.18
 
 - Capture watched TXT/PDF documents, JPEG/PNG/WebP images and MP4 clips through the existing private media path. Preserve captions, original bytes and transcripts, with explicit history recovery and idempotent replay.
