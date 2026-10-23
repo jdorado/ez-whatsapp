@@ -6,6 +6,9 @@ minimumReleaseAgeExclude:
   - '@jc_stack/*'
   - '@aifit/*'
 
+overrides:
+  sharp: 0.35.5
+
 patchedDependencies:
   '@whiskeysockets/baileys@7.0.0-rc14': patches/@whiskeysockets__baileys@7.0.0-rc14.patch
 

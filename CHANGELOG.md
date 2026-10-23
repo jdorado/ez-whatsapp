@@ -3,6 +3,7 @@
 ## 0.1.0-beta.19
 
 - Skip inbox history reads when event polling has reached the capture cursor, so idle polling does not delay task activation behind repeated history scans.
+- Refresh Baileys' media dependencies to sharp 0.35.5 and music-metadata 11.16.1, addressing their published image-decoder and media-parser security advisories.
 - Include beta.18's watched document, image and video capture and manifest example. Requires Ez core 0.1.0-beta.50 or newer; older cores refuse the update and retain the installed version.
 - Beta.18 remains an unpublished draft. Existing live-provider, phone-history, fresh-host and reboot acceptance limits remain as documented.
 
