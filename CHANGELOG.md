@@ -1,10 +1,11 @@
 # Changelog
 
-## 0.1.0-beta.20.rc.1 — private candidate
+## 0.1.0-beta.20.rc.2 — private candidate
 
 - Add account/chat-scoped `audio-transcribe` for a captured incoming voice note, independent of monitoring or reply permission. Reuse the existing configured transcriber, source limits, private originals and provider receipts.
 - Retain bounded private media references during quiet incoming-audio capture, with explicit skipped status and no audio download. Recover older missing sources through one bounded native history request for the chosen note only.
 - Reuse completed transcripts and pending recovery; preserve account boundaries, subscriptions and inbox/event identity. Phone history availability remains provider-dependent.
+- Scan the captured inbox once during audio startup recovery, avoiding repeated full-inbox reads that can exceed the Docker health window on large profiles.
 
 ## 0.1.0-beta.19
 

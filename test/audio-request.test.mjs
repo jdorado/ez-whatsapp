@@ -153,3 +153,14 @@ test('old note without a retained source or newer anchor returns a specific reco
   await assert.rejects(new History(f.store).requestAudio((await f.store.messages()).messages[0], async () => assert.fail('No provider request expected')), { code: 'AUDIO_SOURCE_MISSING' });
   assert.deepEqual(f.counts(), { downloads: 0, requests: 0 });
 });
+test('restart with a large inbox stays within the startup health budget and repairs interrupted notes throughout it', { timeout: 60000 }, async t => {
+  const f = await fixture(t), rows = Array.from({ length: 8000 }, (_, i) => ({ ...row(), id: `large-${i}`, seq: i + 1,
+    ...(i === 0 || i === 7999 ? { transcription: { state: 'processing' } } : {}) }));
+  for (let offset = 0; offset < rows.length; offset += 100)
+    await Promise.all(rows.slice(offset, offset + 100).map(r => writeFile(f.store.messagePath(r), JSON.stringify(r), { mode: 0o600 })));
+  const started = performance.now();
+  await new Audio(f.store, f.lib, f.fetch).init();
+  assert.ok(performance.now() - started < 30000, 'Startup must leave margin within the 60-second service health window');
+  for (const r of [rows[0], rows.at(-1)]) assert.equal((await f.store.readMessage(r)).transcription.code, 'TRANSCRIPTION_INTERRUPTED');
+  assert.deepEqual(f.counts(), { downloads: 0, requests: 0 });
+});
