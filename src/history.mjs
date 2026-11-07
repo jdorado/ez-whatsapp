@@ -70,7 +70,12 @@ export class History {
             // retried merely because WhatsApp repeats its history response.
             const claimed = { ...old, audioRecoveryRequestId: value.id };
             await this.store.updateMessage(claimed);
-            const result = await this.captureAudio(message, claimed);
+            // Domain failures (connection change, audio config) fail this note only;
+            // unexpected errors keep propagating as storage failures.
+            const result = await this.captureAudio(message, claimed).catch(error => {
+              if (!error.code) throw error;
+              return { ...claimed, transcription: { state: 'failed', code: error.code } };
+            });
             await this.store.updateMessage({ ...result, audioRecoveryRequestId: value.id });
             value.received = 1;
             break;

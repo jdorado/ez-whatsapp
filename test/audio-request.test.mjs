@@ -164,3 +164,17 @@ test('restart with a large inbox stays within the startup health budget and repa
   for (const r of [rows[0], rows.at(-1)]) assert.equal((await f.store.readMessage(r)).transcription.code, 'TRANSCRIPTION_INTERRUPTED');
   assert.deepEqual(f.counts(), { downloads: 0, requests: 0 });
 });
+test('domain failures during recovery fail only that note and an unusable local path never leaves it processing', async t => {
+  const f = await fixture(t); await f.store.ingest(row());
+  await f.store.ingest({ ...row(), id: 'anchor', timestamp: row().timestamp + 1, type: 'conversation' });
+  const { History } = await import('../src/history.mjs');
+  const history = new History(f.store, undefined, async () => { throw Object.assign(new Error('changed'), { code: 'UNAVAILABLE' }); });
+  await history.requestAudio((await f.store.messages()).messages[0], async () => 'history-session');
+  await history.receive({ syncType: 6, peerDataRequestSessionId: 'history-session', messages: [voice()] }, f.lib.normalizeMessageContent, 6);
+  assert.deepEqual((await f.store.messages()).messages[0].transcription, { state: 'failed', code: 'UNAVAILABLE' });
+  const g = await fixture(t), quiet = await g.audio.capture(voice(), row());
+  await g.store.ingest(quiet);
+  await writeFile(g.store.path('audio'), 'not a directory');
+  await assert.rejects(g.audio.request(quiet));
+  assert.equal((await g.store.messages()).messages[0].transcription.state, 'failed');
+});

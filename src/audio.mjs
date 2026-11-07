@@ -95,13 +95,20 @@ export class Audio {
     if (!bytes) {
       const saved = await this.privateBytes(this.store.path(`audio-sources/${identity(row)}.bin`), maxSourceBytes);
       if (!saved) return null;
-      source = this.lib.proto.Message.AudioMessage.decode(saved);
+      try { source = this.lib.proto.Message.AudioMessage.decode(saved); }
+      catch { throw fail('AUDIO_CHANGED', 'Retained audio source is unreadable'); }
     }
     if (!stillCurrent()) throw fail('UNAVAILABLE', 'WhatsApp connection changed');
     await this.store.updateMessage({ ...row, transcription: { state: 'processing' } });
-    const result = bytes ? await this.transcribe(bytes, row.transcription.mimeType, row) : await this.download(source, row, stillCurrent, true);
-    await this.store.updateMessage(result);
-    return this.store.readMessage(result);
+    try {
+      const result = bytes ? await this.transcribe(bytes, row.transcription.mimeType, row) : await this.download(source, row, stillCurrent, true);
+      await this.store.updateMessage(result);
+      return await this.store.readMessage(result);
+    } catch (error) {
+      // Never leave an explicit request stuck in processing until restart.
+      await this.store.updateMessage({ ...row, transcription: { state: 'failed', code: error.code ?? 'TRANSCRIPTION_FAILED' } }).catch(() => {});
+      throw error;
+    }
   }
   async download(audio, row, stillCurrent, explicit = false) {
     const mimeType = audio?.mimetype?.split(';')[0]?.trim();
