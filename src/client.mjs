@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { fail } from './store.mjs';
 export function client(dir, command, args, socketPath = join(dir, 'service.sock')) {
   return new Promise((ok, no) => {
-    const req = request({ socketPath, path: '/', method: 'POST', timeout: 45000 }, res => {
+    const req = request({ socketPath, path: '/', method: 'POST', timeout: command === 'audio-transcribe' ? 105000 : 45000 }, res => {
       let data = '';
       res.on('data', c => { data += c; });
       res.on('end', () => { try { const value = JSON.parse(data); if (!value.ok) no(fail(value.error.code, value.error.message)); else ok(value.data); } catch (e) { no(e); } });

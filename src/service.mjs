@@ -20,10 +20,11 @@ export class Service {
     }
     if (command === 'setup') { await this.transport.setup?.(); return this.call('doctor'); }
     if (command === 'audio-configure') return this.transport.audioConfigure(args.config);
+    if (command === 'audio-transcribe') return this.transport.audioTranscribe(args);
     if (command === 'repair') return this.transport.repair();
     if (command === 'history') return this.transport.historyRequest(args);
     if (command === 'history-status') return this.transport.historyStatus();
-    if (command === 'doctor') return { ...this.transport.status(), profile: this.store.dir, capabilities: ['send-text', 'read-captured-messages', 'request-chat-history'], eventSource: true, wakePolicy: await this.policy.get(), hostDispatchRequired: true };
+    if (command === 'doctor') return { ...this.transport.status(), profile: this.store.dir, capabilities: ['send-text', 'read-captured-messages', 'request-chat-history', 'transcribe-captured-audio'], eventSource: true, wakePolicy: await this.policy.get(), hostDispatchRequired: true };
     if (command === 'policy') return args.mode === undefined ? this.policy.get() : this.policy.change(command, args);
     if (['subscribe', 'unsubscribe'].includes(command)) return this.policy.change(command, args);
     if (command === 'events-head') return { cursor: await this.policy.head(), taskProtocol: 'message-v1', persistentWatch: true, taskVoice: true, accountId: this.transport.status().account?.jid ?? null };

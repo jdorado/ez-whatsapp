@@ -3,7 +3,7 @@ import pino from 'pino';
 import QRCode from 'qrcode';
 import { unlink } from 'node:fs/promises';
 import { authState } from './auth.mjs';
-import { normalize } from './messages.mjs';
+import { normalize, recipient } from './messages.mjs';
 import { History } from './history.mjs';
 import { Documents } from './documents.mjs';
 import { Audio } from './audio.mjs';
@@ -14,7 +14,10 @@ export async function createTransport(store, lib = baileys, options = {}) {
   await audio.init();
   const documents = new Documents(store, lib, (bytes,mime) => audio.transcribe(bytes,mime));
   await documents.init();
-  const history = new History(store, async (message, row) => documents.capture(message, row, () => !stopped && status.connected, true));
+  const history = new History(store, async (message, row) => documents.capture(message, row, () => !stopped && status.connected, true), async (message, row) => {
+    await audio.remember(message, row);
+    return await audio.request(row, () => !stopped && status.connected) ?? row;
+  });
   let auth = await authState(store.dir, lib);
   await privateDir(store.path('outgoing'));
   const logger = pino({ level: 'silent' });
@@ -29,6 +32,23 @@ export async function createTransport(store, lib = baileys, options = {}) {
     onReceipt: async () => {},
     status: () => ({ ...status, audio: audio.status(), ...(status.qrPath ? { qrAgeMs: Date.now() - Date.parse(status.qrCreatedAt), qrRemainingMs: Math.max(0, Date.parse(status.qrCreatedAt) + status.qrRefreshAfterMs - Date.now()) } : {}) }),
     audioConfigure: value => audio.configure(value),
+    async audioTranscribe(args) {
+      const chat = recipient(args.chat), seq = args.seq;
+      if (!Number.isSafeInteger(seq) || seq < 1) throw fail('INVALID_INPUT', 'Supply --seq with one captured incoming audio message');
+      const row = (await store.messages(seq - 1, 1)).messages[0];
+      const alternate = /^\d+@lid$/.test(row?.chat) && row.phoneJid === chat;
+      if (!row || row.seq !== seq || (row.chat !== chat && !alternate) || row.type !== 'audioMessage' || row.fromMe)
+        throw fail('NOT_FOUND', 'Incoming audio is not in this account and chat');
+      const current = socket, stillCurrent = () => !stopped && status.connected && current === socket;
+      const result = await audio.request(row, stillCurrent);
+      if (result) return { message: result };
+      if (!stillCurrent()) throw fail('UNAVAILABLE', 'WhatsApp must be connected to recover audio');
+      const recovery = await history.requestAudio(row, (count, key, timestamp) => {
+        if (!stillCurrent()) throw fail('UNAVAILABLE', 'Connection changed');
+        return current.fetchMessageHistory(count, key, timestamp);
+      });
+      return { message: await store.readMessage(row), recovery };
+    },
     async start() { await removeQR(); connect(); },
     async setup() {
       await events;

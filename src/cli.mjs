@@ -14,6 +14,7 @@ export const help = `ez-whatsapp — standalone WhatsApp account plugin
   repair     Replace revoked (401) authentication; preserve pinned identity and records
   doctor     Live connection identity, QR image path, capabilities
   audio-configure Private JSON stdin: {"geminiApiKey":"..."}; enables voice-note transcription for watched chats
+  audio-transcribe --chat JID|+NUMBER --seq CAPTURED_SEQ (one incoming note, no monitoring or replies)
   inbox      Captured messages: --after CURSOR --limit 1..100 [--chat JID]
   history    Request older messages: --chat JID --before CAPTURED_SEQ --limit 1..50
   document-replay --chat JID --seq CAPTURED_SEQ (explicit replay of retained TXT/PDF/image/video)
@@ -74,7 +75,7 @@ export async function main(argv = process.argv.slice(2)) {
       result = await client(profile, 'setup', { account: v.account }, v.socket);
       result = { ...result, next: 'Scan the current QR if needed, then verify connected identity with doctor' };
     } else {
-      if (!['accounts','account-add','qr','repair','doctor','inbox','document-replay','history','history-status','send','verify','operation','policy','subscribe','unsubscribe'].includes(command)) throw fail('INVALID_INPUT', 'Unknown command; use --help');
+      if (!['accounts','account-add','qr','repair','doctor','inbox','audio-transcribe','document-replay','history','history-status','send','verify','operation','policy','subscribe','unsubscribe'].includes(command)) throw fail('INVALID_INPUT', 'Unknown command; use --help');
       const args = { account: v.account, purpose: v.purpose, mode: v.mode, to: v.to, key: v['idempotency-key'], preview: v.preview, after: v.after === undefined ? 0 : Number(v.after), limit: v.limit === undefined ? 20 : Number(v.limit), chat: v.chat };
       if (v.seq !== undefined) args.seq = Number(v.seq);
       if (v.before !== undefined) args.before = Number(v.before);
