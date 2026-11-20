@@ -29,7 +29,7 @@ export async function lock(dir) {
   return async () => { await fd.close(); await unlink(path); };
 }
 export class Store {
-  constructor(dir) { this.dir = resolve(dir); this.queue = Promise.resolve(); }
+  constructor(dir) { this.dir = resolve(dir); this.queue = Promise.resolve(); this.index = null; }
   async init() {
     for (const p of [this.dir, this.path('messages'), this.path('operations')]) await privateDir(p);
   }
@@ -46,7 +46,7 @@ export class Store {
     return this.serial(async () => {
       const old = await this.readMessage(message);
       if (!old) throw fail('NOT_FOUND', 'Captured message is missing');
-      await writeJSON(this.messagePath(message), { ...message, seq: old.seq, capturedAt: old.capturedAt });
+      await this.save(this.messagePath(message), { ...message, seq: old.seq, capturedAt: old.capturedAt });
     });
   }
   async ingest(message) {
@@ -57,18 +57,50 @@ export class Store {
       const meta = await readJSON(this.path('cursor.json'), { seq: 0 });
       // Reserve before persistence: crash gaps are harmless; sequence reuse is not.
       await writeJSON(this.path('cursor.json'), { seq: meta.seq + 1 });
-      await writeJSON(path, { ...message, seq: meta.seq + 1, capturedAt: new Date().toISOString() });
+      await this.save(path, { ...message, seq: meta.seq + 1, capturedAt: new Date().toISOString() });
       return true;
     });
   }
-  async messages(after = 0, limit = 20, chat) {
-    const rows = [];
-    for (const name of await readdir(this.path('messages'))) {
-      if (!name.endsWith('.json')) continue;
-      const row = await readJSON(this.path(`messages/${name}`));
-      if (row.seq > after && (!chat || row.chat === chat)) rows.push(row);
-    }
-    rows.sort((a, b) => a.seq - b.seq);
-    return { messages: rows.slice(0, limit), nextCursor: rows.slice(0, limit).at(-1)?.seq ?? after, hasMore: rows.length > limit, coverage: 'captured-only', historyCoverage: 'partial-on-request' };
+  // The message files stay canonical. Reads come from a sequence-ordered index
+  // loaded once per process, so a poll costs its page, not the whole inbox.
+  async save(path, row) {
+    const json = JSON.stringify(row);
+    await atomic(path, json);
+    const pending = this.index;
+    const entries = pending && await pending.catch(() => null);
+    if (entries) upsert(entries, { seq: row.seq, chat: row.chat, json });
   }
+  load() {
+    this.index ??= (async () => {
+      const dir = this.path('messages'), names = (await readdir(dir)).filter(name => name.endsWith('.json')), entries = [];
+      for (let i = 0; i < names.length; i += 64)
+        await Promise.all(names.slice(i, i + 64).map(async name => {
+          const json = await readFile(join(dir, name), 'utf8');
+          let row; try { row = JSON.parse(json); } catch { throw fail('CORRUPT_STATE', 'Cannot read state; preserve it and investigate'); }
+          entries.push({ seq: row.seq, chat: row.chat, json });
+        }));
+      return entries.sort((a, b) => a.seq - b.seq);
+    })().catch(error => { this.index = null; throw error; });
+    return this.index;
+  }
+  async messages(after = 0, limit = 20, chat) {
+    const entries = await this.load();
+    const page = [];
+    let hasMore = false;
+    for (let i = firstAfter(entries, after); i < entries.length; i++) {
+      if (chat && entries[i].chat !== chat) continue;
+      if (page.length === limit) { hasMore = true; break; }
+      page.push(JSON.parse(entries[i].json));
+    }
+    return { messages: page, nextCursor: page.at(-1)?.seq ?? after, hasMore, coverage: 'captured-only', historyCoverage: 'partial-on-request' };
+  }
+}
+function firstAfter(entries, seq) {
+  let low = 0, high = entries.length;
+  while (low < high) { const mid = (low + high) >> 1; if (entries[mid].seq > seq) high = mid; else low = mid + 1; }
+  return low;
+}
+function upsert(entries, entry) {
+  const at = firstAfter(entries, entry.seq - 1);
+  if (entries[at]?.seq === entry.seq) entries[at] = entry; else entries.splice(at, 0, entry);
 }
