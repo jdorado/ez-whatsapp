@@ -20,8 +20,7 @@ export class Audio {
     this.config = await readJSON(this.store.path('audio-config.json'), null);
     if (this.config) this.validate(this.config);
     // A service restart does not retry a possibly accepted provider request.
-    // Store.messages already scans the complete inbox; paging it rescans every
-    // file for each page and can exceed the service's startup health window.
+    // One full read of the store's in-memory index; paging adds nothing.
     const rows = (await this.store.messages(0, Number.MAX_SAFE_INTEGER)).messages;
     for (const row of rows) if (row.transcription?.state === 'processing')
       await this.store.updateMessage({ ...row, transcription: { state: 'failed', code: 'TRANSCRIPTION_INTERRUPTED' } });
