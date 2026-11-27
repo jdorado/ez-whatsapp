@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.0-beta.21
+
+- Serve inbox reads, event polls and startup recovery from a sequence-ordered index built once per process from the captured message files, which stay canonical. A poll that is behind the capture cursor now costs its page instead of re-reading every message, which kept a large profile's service at 100% CPU and its event cursor from ever catching up. Writes keep the index current; restart rebuilds it, and a corrupt message file still fails closed.
+
 ## 0.1.0-beta.20
 
 - Add account/chat-scoped `audio-transcribe` for a captured incoming voice note, independent of monitoring or reply permission. Reuse the existing configured transcriber, source limits, private originals and provider receipts.

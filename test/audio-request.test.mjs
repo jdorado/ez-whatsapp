@@ -158,10 +158,12 @@ test('restart with a large inbox stays within the startup health budget and repa
     ...(i === 0 || i === 7999 ? { transcription: { state: 'processing' } } : {}) }));
   for (let offset = 0; offset < rows.length; offset += 100)
     await Promise.all(rows.slice(offset, offset + 100).map(r => writeFile(f.store.messagePath(r), JSON.stringify(r), { mode: 0o600 })));
+  // The index belongs to one process, so a restart is a new Store over the same files.
+  const restarted = new Store(f.store.dir); await restarted.init();
   const started = performance.now();
-  await new Audio(f.store, f.lib, f.fetch).init();
+  await new Audio(restarted, f.lib, f.fetch).init();
   assert.ok(performance.now() - started < 30000, 'Startup must leave margin within the 60-second service health window');
-  for (const r of [rows[0], rows.at(-1)]) assert.equal((await f.store.readMessage(r)).transcription.code, 'TRANSCRIPTION_INTERRUPTED');
+  for (const r of [rows[0], rows.at(-1)]) assert.equal((await restarted.readMessage(r)).transcription.code, 'TRANSCRIPTION_INTERRUPTED');
   assert.deepEqual(f.counts(), { downloads: 0, requests: 0 });
 });
 test('domain failures during recovery fail only that note and an unusable local path never leaves it processing', async t => {
